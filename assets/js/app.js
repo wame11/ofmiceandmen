@@ -1,1751 +1,1122 @@
 // =================================================================
-// FWC 26 PREDICTIONS POOL — main app
+// OF MICE AND MEN — REVISION NOTES
+// Single source of truth: data/of_mice_and_men_notes.json
+// Your own notes / quotes / diagrams: Firebase Realtime Database (omam/)
 // =================================================================
 
-import {
-  initializeApp,
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { firebaseConfig, DB_ROOT } from "./firebase-config.js";
 
-import {
-  getDatabase, ref, get, set, update, serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+const DATA_URL = "data/of_mice_and_men_notes.json";
+const CACHE_KEY = "omam-notes-cache-v1";
+const FIREBASE_VERSION = "10.7.0";
 
-import { firebaseConfig, ADMIN_PASSWORD, CONTACT_EMAIL } from "./firebase-config.js";
-import { TEAMS, GROUPS, GROUP_MATCHES, KNOCKOUT_MATCHES, SCORING } from "./data.js";
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
+const NARROW = window.matchMedia("(max-width: 760px)");
+const reduced = () => REDUCED_MOTION.matches;
 
-// -----------------------------------------------------------------
-// Firebase init
-// -----------------------------------------------------------------
-const fbApp = initializeApp(firebaseConfig);
-const db = getDatabase(fbApp);
+const COLOURS = {
+  george: "#2F6B4F", lennie: "#D29A2B", candy: "#9A7B4F", crooks: "#4A4E8C",
+  curley: "#A93F2E", wife: "#C2385F", slim: "#2F7E86", boss: "#6E5A2E",
+  nature: "#3E7A5A", bunkhouse: "#7A6E62",
+};
+const SWATCHES = ["#2A5DB0", "#2F6B4F", "#D29A2B", "#A93F2E", "#4A4E8C", "#2F7E86", "#C2385F", "#6E5A2E", "#7A6E62"];
+const MINE = "#2A5DB0";
+const KINDS = { quote: "Quote", point: "Point", context: "Context" };
+const ARC = 44; // px: how far the top/bottom nodes tuck in towards the hub
 
-// -----------------------------------------------------------------
-// Session state
-// -----------------------------------------------------------------
-const session = {
-  code: null,
-  name: null,
-  isTest: false,
-  isAdmin: false,
-  predictions: null,
+const SECTION = {
+  home: "Home", exam: "Exam essentials", characters: "Characters", settings: "Settings",
+  incidents: "Incidents", notes: "Notes & Quotes", paragraphs: "Paragraphs", diagram: "Characters",
 };
 
-// Leaderboard stays hidden from players until you flip this to false (reveal after the final).
-const LEADERBOARD_LOCKED = true;
-
-const SESSION_KEY = "fwc26-login";
-const PREDICTION_LOCK_MS = 60 * 60 * 1000;
-const UK_SUMMER_OFFSET_MINUTES = 60;
-
-const TEAM_CODES = Object.keys(TEAMS);
-
-const BRACKET_ROUNDS = [
-  { id: "r32", label: "Round of 32", pickCount: 32, scoreKey: "r32Team", per: SCORING.r32Team },
-  { id: "r16", label: "Round of 16", pickCount: 16, scoreKey: "r16Team", per: SCORING.r16Team },
-  { id: "qf", label: "Quarter-finals", pickCount: 8, scoreKey: "qfTeam", per: SCORING.qfTeam },
-  { id: "sf", label: "Semi-finals", pickCount: 4, scoreKey: "sfTeam", per: SCORING.sfTeam },
-  { id: "finalists", label: "Finalists", pickCount: 2, scoreKey: "finalTeam", per: SCORING.finalTeam },
-];
-
-const PLAYER_BRACKET_ROUNDS = BRACKET_ROUNDS.filter((round) => round.id !== "r32");
+const state = {
+  data: null,
+  notes: {},      // { targetKey: { noteId: { text, kind, createdAt } } }
+  diagrams: {},   // { id: { name, tagline, bookPage, colour, createdAt } }
+  index: [],
+  route: null,
+  pendingJump: null,
+  dirty: false,   // notes changed while a form was open
+  filter: "all",
+  quiz: { score: 0, asked: 0, item: null, done: false },
+  connected: null,
+};
 
 // -----------------------------------------------------------------
 // Tiny helpers
 // -----------------------------------------------------------------
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const attr = (s) => esc(s).replace(/"/g, "&quot;");
+const safeColour = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : MINE);
+const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-function show(viewId) {
-  ["view-login", "view-predictions", "view-admin"].forEach((id) => {
-    $("#" + id).classList.toggle("hidden", id !== viewId);
-  });
-  window.scrollTo(0, 0);
+const QUOTE_RE = /(["“])([^"”]+?)(["”])/g;
+const hasQuote = (t) => /["“][^"”]+["”]/.test(String(t ?? ""));
+const isContext = (t) => String(t ?? "").trim().startsWith("★");
+const firstQuote = (t) => { const m = String(t ?? "").match(/["“]([^"”]+)["”]/); return m ? m[1] : null; };
+const bookRef = (p) => (p ? `<span class="pref">Book p.${esc(p)}</span>` : "");
+
+/** Render a note string with the notebook conventions: "quotes" highlighted, ★ context, [p.X] → Book p.X */
+function fmt(text, { kind } = {}) {
+  let raw = String(text ?? "").trim();
+  let ctx = kind === "context";
+  if (raw.startsWith("★")) { ctx = true; raw = raw.slice(1).trim(); }
+  let s = esc(raw);
+  // quotes first, then page refs — the chip markup contains double quotes of its own
+  let k = 0;
+  s = s.replace(QUOTE_RE, (m, o, q, c) => `<mark class="hl" style="--k:${k++}">${o}${q}${c}</mark>`);
+  s = s.replace(/\[p\.\s*([^\]]+)\]/g, (m, p) => `<span class="pref">Book p.${p}</span>`);
+  if (kind === "quote" && k === 0) s = `<mark class="hl">“${s}”</mark>`;
+  if (ctx) s = `<span class="star">★</span> ${s}`;
+  return s;
 }
 
-function flagUrl(iso, size = "w40") {
-  return `https://flagcdn.com/${size}/${iso}.png`;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { el.hidden = true; }, 2200);
 }
 
-function teamChip(code, opts = {}) {
-  const t = TEAMS[code];
-  if (!t) return code;
-
-  const cls = opts.class || "";
-
-  return `
-    <span class="match-row__team match-row__team--${opts.side || "home"} ${cls}">
-      <img class="team-flag" src="${flagUrl(t.iso)}" alt="${t.name}" loading="lazy" />
-      <span class="team-code">${code}</span>
-    </span>`;
-}
-
-function formatDate(iso) {
-  const d = new Date(iso + "T00:00:00Z");
-  return d.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function ukKickoffTimestamp(match) {
-  const [year, month, day] = match.date.split("-").map(Number);
-  const [hour, minute] = match.time.split(":").map(Number);
-
-  return Date.UTC(year, month - 1, day, hour, minute) - (UK_SUMMER_OFFSET_MINUTES * 60 * 1000);
-}
-
-function kickoffDateTime(match) {
-  return new Date(ukKickoffTimestamp(match));
-}
-
-function predictionLockTimestamp(match) {
-  return ukKickoffTimestamp(match) - PREDICTION_LOCK_MS;
-}
-
-function isMatchLocked(match) {
-  return GROUP_MATCHES.some((m) => m.id === match.id);
-}
-
-function firstKickoff(matches) {
-  return matches
-    .map(kickoffDateTime)
-    .sort((a, b) => a - b)[0];
-}
-
-function isBracketPredictionLocked() {
-  const firstR32 = firstKickoff(KNOCKOUT_MATCHES.filter((m) => m.round === "R32"));
-  return firstR32 && Date.now() >= (firstR32.getTime() - PREDICTION_LOCK_MS);
-}
-
-function debounce(fn, ms = 600) {
-  let t;
-
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
-}
-
-function asList(value) {
-  if (Array.isArray(value)) return value.filter(Boolean);
-  if (value && typeof value === "object") return Object.values(value).filter(Boolean);
-  return [];
-}
-
-function confirmedKnockoutTeams(results) {
-  const selected = new Set(asList(results.bracket?.r32));
-  return TEAM_CODES.filter((code) => selected.has(code));
-}
-
-function groupMatchById(id) {
-  return GROUP_MATCHES.find((m) => m.id === Number(id));
-}
-
-function hasSavedLogin() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-    return Boolean(saved?.code);
-  } catch {
-    forgetLogin();
-    return false;
-  }
-}
-
-function showLoadingMessage(text = "Loading") {
-  const loading = $("#loading");
-  if (!loading) return;
-
-  if (!$("#loading-spinner-style")) {
-    const style = document.createElement("style");
-    style.id = "loading-spinner-style";
-    style.textContent = `
-      .loading-spinner {
-        width: 42px;
-        height: 42px;
-        border: 3px solid rgba(244,237,224,0.22);
-        border-top-color: var(--orange);
-        border-radius: 50%;
-        animation: loading-spin .8s linear infinite;
-      }
-      .loading-text {
-        font-family: var(--font-mono);
-        font-size: 12px;
-        letter-spacing: .22em;
-        text-transform: uppercase;
-      }
-      @keyframes loading-spin {
-        to { transform: rotate(360deg); }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  loading.classList.remove("is-fading");
-  loading.innerHTML = `
-    <div class="loading-spinner" aria-hidden="true"></div>
-    <div class="loading-text">${escapeHtml(text)}</div>`;
-}
-
-function hideLoading() {
-  const loading = $("#loading");
-  if (!loading) return;
-
-  loading.classList.add("is-fading");
-  setTimeout(() => loading.remove(), 400);
-}
-
-function rememberLogin() {
-  if (!session.code || !session.name || session.isTest) return;
-
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
-    code: session.code,
-    name: session.name,
-  }));
-}
-
-function forgetLogin() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
-async function restoreLogin() {
-  let saved;
-
-  try {
-    saved = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-  } catch {
-    forgetLogin();
-    return false;
-  }
-
-  if (!saved?.code) return false;
-
-  const codeDoc = await fetchCodeDoc(saved.code);
-
-  if (!codeDoc) {
-    forgetLogin();
-    return false;
-  }
-
-  session.code = saved.code;
-  session.name = codeDoc.name || saved.name || "Player";
-  session.isTest = false;
-  session.predictions = (await fetchPredictions(saved.code)) || { groups: {}, bracket: {} };
-
-  await launchApp();
-  return true;
-}
-
-// -----------------------------------------------------------------
-// Realtime Database data layer
-// -----------------------------------------------------------------
-async function fetchCodeDoc(code) {
-  const snap = await get(ref(db, `codes/${code}`));
-  return snap.exists() ? snap.val() : null;
-}
-
-async function claimCode(code, name) {
-  await update(ref(db, `codes/${code}`), {
-    claimed: true,
-    name,
-    claimedAt: serverTimestamp(),
-  });
-}
-
-async function fetchPredictions(code) {
-  const snap = await get(ref(db, `predictions/${code}`));
-  return snap.exists() ? snap.val() : null;
-}
-
-async function savePredictions(code, payload) {
-  await update(ref(db, `predictions/${code}`), {
-    ...payload,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-async function fetchResults() {
-  const snap = await get(ref(db, "results/global"));
-  return snap.exists() ? snap.val() : {
-    groups: {},
-    bracket: {},
-    champion: null,
-    third: null,
-  };
-}
-
-async function saveResults(payload) {
-  await update(ref(db, "results/global"), {
-    ...payload,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-async function fetchAllPredictions() {
-  const snap = await get(ref(db, "predictions"));
-  const out = [];
-
-  snap.forEach((d) => {
-    out.push({
-      code: d.key,
-      ...d.val(),
-    });
-  });
-
-  return out;
-}
-
-async function fetchAllCodes() {
-  const snap = await get(ref(db, "codes"));
-  const out = [];
-
-  snap.forEach((d) => {
-    out.push({
-      code: d.key,
-      ...d.val(),
-    });
-  });
-
-  return out;
-}
-
-// -----------------------------------------------------------------
-// LOGIN FLOW
-// -----------------------------------------------------------------
-function showLoginError(msg) {
-  const el = $("#login-error");
+function banner(msg) {
+  const el = $("#banner");
+  if (!msg) { el.hidden = true; return; }
   el.textContent = msg;
   el.hidden = false;
 }
 
-function clearLoginError() {
-  $("#login-error").hidden = true;
-}
+// -----------------------------------------------------------------
+// Storage: Firebase Realtime Database (same project as the rest of
+// the site) with a localStorage mirror so notes show instantly.
+// -----------------------------------------------------------------
+const store = {
+  fb: null,
+  offlineTimer: null,
 
-function prepareLoginForm() {
-  const nameInput = $("#login-name");
-
-  if (nameInput) {
-    nameInput.required = false;
-    nameInput.removeAttribute("required");
-    nameInput.placeholder = "First time only";
-  }
-
-  const notes = $$(".login-card .login-sub");
-
-  if (notes[0]) {
-    notes[0].textContent = "Enter your access code to open your predictions. Add your name only the first time you use a new code.";
-  }
-
-  if (notes[1]) {
-    notes[1].textContent = "Already used your code? You can leave the name box blank.";
-  }
-}
-
-async function attemptLogin(rawCode, rawName) {
-  clearLoginError();
-
-  const code = rawCode.trim().toUpperCase();
-  const name = rawName.trim();
-
-  if (!code) {
-    showLoginError("Please enter your access code.");
-    return;
-  }
-
-  if (code === "TEST") {
-    session.code = "TEST";
-    session.name = name || "Test player";
-    session.isTest = true;
-    session.predictions = (await fetchPredictions("TEST")) || { groups: {}, bracket: {} };
-
-    await launchApp();
-    return;
-  }
-
-  let codeDoc;
-
-  try {
-    codeDoc = await fetchCodeDoc(code);
-  } catch (e) {
-    showLoginError("Couldn't reach the server. Check your connection and try again.");
-    console.error(e);
-    return;
-  }
-
-  if (!codeDoc) {
-    showLoginError("That code doesn't look right. Double-check the letters / numbers.");
-    return;
-  }
-
-  if (!codeDoc.claimed) {
-    if (!name) {
-      showLoginError("Please enter your name the first time you use a new code.");
-      return;
-    }
+  async init() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (cached) { state.notes = cached.notes || {}; state.diagrams = cached.diagrams || {}; }
+    } catch { /* ignore a bad cache */ }
 
     try {
-      await claimCode(code, name);
-    } catch (e) {
-      showLoginError("Couldn't claim that code. Try again.");
-      console.error(e);
-      return;
+      const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+      const [{ initializeApp }, dbm] = await Promise.all([
+        import(`${base}/firebase-app.js`),
+        import(`${base}/firebase-database.js`),
+      ]);
+      const app = initializeApp(firebaseConfig);
+      const db = dbm.getDatabase(app);
+      this.fb = { db, ...dbm };
+
+      dbm.onValue(dbm.ref(db, `${DB_ROOT}/notes`), (snap) => {
+        state.notes = snap.val() || {};
+        this.cache();
+        onNotesChanged();
+      });
+      dbm.onValue(dbm.ref(db, `${DB_ROOT}/diagrams`), (snap) => {
+        state.diagrams = snap.val() || {};
+        this.cache();
+        onNotesChanged();
+      });
+      dbm.onValue(dbm.ref(db, ".info/connected"), (snap) => {
+        const on = snap.val() === true;
+        state.connected = on;
+        clearTimeout(this.offlineTimer);
+        if (on) banner(null);
+        else this.offlineTimer = setTimeout(() => banner("Offline — notes you add now are kept on this device and will sync when you're back online."), 5000);
+      });
+    } catch (err) {
+      console.warn("Firebase unavailable, using this device only", err);
+      this.fb = null;
+      banner("Couldn't reach the notes database — notes you add are saved on this device only.");
     }
-  }
+  },
 
-  session.code = code;
-  session.name = codeDoc.claimed ? (codeDoc.name || name || "Player") : name;
-  session.isTest = false;
-  session.predictions = (await fetchPredictions(code)) || { groups: {}, bracket: {} };
+  cache() {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ notes: state.notes, diagrams: state.diagrams })); } catch { /* storage full or blocked */ }
+  },
 
-  rememberLogin();
-  await launchApp();
+  newId() {
+    if (this.fb) return this.fb.push(this.fb.ref(this.fb.db, DB_ROOT)).key;
+    return "local-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  },
+
+  async saveNote(target, id, patch) {
+    const bucket = (state.notes[target] = state.notes[target] || {});
+    bucket[id] = { ...(bucket[id] || {}), ...patch };
+    this.cache();
+    if (this.fb) await this.fb.update(this.fb.ref(this.fb.db, `${DB_ROOT}/notes/${target}/${id}`), patch);
+  },
+
+  async deleteNote(target, id) {
+    if (state.notes[target]) { delete state.notes[target][id]; if (!Object.keys(state.notes[target]).length) delete state.notes[target]; }
+    this.cache();
+    if (this.fb) await this.fb.remove(this.fb.ref(this.fb.db, `${DB_ROOT}/notes/${target}/${id}`));
+  },
+
+  async saveDiagram(id, diagram) {
+    state.diagrams[id] = { ...(state.diagrams[id] || {}), ...diagram };
+    this.cache();
+    if (this.fb) await this.fb.update(this.fb.ref(this.fb.db, `${DB_ROOT}/diagrams/${id}`), diagram);
+  },
+
+  async deleteDiagram(id) {
+    delete state.diagrams[id];
+    delete state.notes[`diagram_${id}`];
+    this.cache();
+    if (this.fb) {
+      await this.fb.remove(this.fb.ref(this.fb.db, `${DB_ROOT}/diagrams/${id}`));
+      await this.fb.remove(this.fb.ref(this.fb.db, `${DB_ROOT}/notes/diagram_${id}`));
+    }
+  },
+};
+
+function userNotes(target) {
+  const bucket = state.notes[target] || {};
+  return Object.keys(bucket)
+    .map((id) => ({ id, target, ...bucket[id] }))
+    .filter((n) => typeof n.text === "string" && n.text.trim())
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 }
 
-async function launchApp() {
-  $("#user-name-display").textContent = session.name + (session.isTest ? " ★" : "");
+function customDiagrams() {
+  return Object.keys(state.diagrams)
+    .map((id) => ({ id, ...state.diagrams[id] }))
+    .filter((d) => typeof d.name === "string" && d.name.trim())
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+}
 
-  show("view-predictions");
-
-  // Group stage is closed: hide its tab entirely and open straight onto the bracket.
-  const groupsTabBtn = document.querySelector('#app-tabs [data-tab="groups"]');
-  if (groupsTabBtn) groupsTabBtn.style.display = "none";
-
-  $$("#app-tabs .app-tab").forEach((b) => b.classList.toggle("is-active", b.dataset.tab === "bracket"));
-  $("#tab-groups").classList.add("hidden");
-  $("#tab-bracket").classList.remove("hidden");
-  $("#tab-leaderboard").classList.add("hidden");
-
-  await renderBracketTab();
-  updateUserScoreDisplay();
+function onNotesChanged() {
+  if (!state.data) return;
+  buildIndex();
+  if ($(".note-form")) { state.dirty = true; return; }
+  if (state.route) render({ animate: false });
 }
 
 // -----------------------------------------------------------------
-// GROUP STAGE PREDICTIONS
+// Subjects (characters, settings, custom diagrams) share one shape
 // -----------------------------------------------------------------
-function renderGroupsTab() {
-  const root = $("#groups-container");
-  const groupKeys = Object.keys(GROUPS);
-
-  root.innerHTML = groupKeys.map((g) => {
-    const matches = GROUP_MATCHES.filter((m) => m.group === g);
-
-    return `
-      <div class="group-card">
-        <div class="group-card__header">
-          <div class="group-card__title">Group ${g}</div>
-          <div class="group-card__teams">${GROUPS[g].join(" · ")}</div>
-        </div>
-        <div class="group-card__matches">
-          ${matches.map(renderMatchRow).join("")}
-        </div>
-      </div>`;
-  }).join("");
-
-  $$(".match-row", root).forEach(wireMatchRow);
-  updateGroupsProgress();
+function subjectFor(kind, id) {
+  const d = state.data;
+  if (kind === "characters") {
+    const c = d.characters.find((x) => x.id === id);
+    return c && { kind, id: c.id, key: `char_${c.id}`, name: c.name, tagline: c.tagline, bookPage: c.bookPage, nodes: c.nodes, colour: COLOURS[c.id] || MINE, mine: false, route: `#/characters/${c.id}` };
+  }
+  if (kind === "settings") {
+    const s = d.settings.find((x) => x.id === id);
+    return s && { kind, id: s.id, key: `setting_${s.id}`, name: s.name, tagline: s.tagline, bookPage: s.bookPage, nodes: s.nodes, colour: COLOURS[s.id] || MINE, mine: false, route: `#/settings/${s.id}` };
+  }
+  if (kind === "diagram") {
+    const g = state.diagrams[id];
+    return g && { kind, id, key: `diagram_${id}`, name: g.name, tagline: g.tagline || "", bookPage: g.bookPage || "", nodes: [], colour: safeColour(g.colour), mine: true, route: `#/diagram/${id}` };
+  }
+  return null;
 }
 
-function renderMatchRow(m) {
-  const pred = (session.predictions.groups || {})[m.id] || {};
-  const winner = pred.winner;
-  const sh = pred.scoreHome ?? "";
-  const sa = pred.scoreAway ?? "";
-  const locked = isMatchLocked(m);
-  const disabled = locked ? "disabled" : "";
-  const lockedLabel = locked ? " · Locked" : "";
+// -----------------------------------------------------------------
+// Search index — rebuilt whenever the notes change
+// -----------------------------------------------------------------
+function buildIndex() {
+  const d = state.data;
+  const idx = [];
+  const add = (o) => idx.push({ ...o, isQuote: o.kind === "quote" || hasQuote(o.text), isContext: o.kind === "context" || isContext(o.text), lc: String(o.text).toLowerCase() });
+  const addMine = (target, route, section, group, colour) =>
+    userNotes(target).forEach((n) => add({ id: `u-${n.id}`, route, section, group, text: n.text, kind: n.kind, mine: true, colour }));
 
-  const outcomeBtn = (val, label) => `
-    <button type="button" class="outcome-btn ${winner === val ? "is-selected" : ""}" data-pick="${val.toLowerCase()}" ${disabled}>${label}</button>`;
+  d.assessmentObjectives.forEach((ao) => ao.points.forEach((p, i) =>
+    add({ id: `ao-${ao.ao}-${i}`, route: "#/exam", section: "Exam essentials", group: ao.ao, text: p, colour: COLOURS.boss })));
 
-  return `
-    <div class="match-row" data-match-id="${m.id}" data-locked="${locked}">
-      <div class="match-row__num">${String(m.id).padStart(2, "0")}</div>
-      <div class="match-row__date">${formatDate(m.date)} · ${m.time} UK${lockedLabel}</div>
-      ${teamChip(m.home, { side: "home" })}
-      <div class="match-row__pick">
-        <input class="score-input" data-side="home" type="number" min="0" max="20" value="${sh}" inputmode="numeric" aria-label="${m.home} score" ${disabled} />
-        <span class="score-dash">—</span>
-        <input class="score-input" data-side="away" type="number" min="0" max="20" value="${sa}" inputmode="numeric" aria-label="${m.away} score" ${disabled} />
-      </div>
-      ${teamChip(m.away, { side: "away" })}
-      <div class="match-row__outcome">
-        ${outcomeBtn("HOME", m.home + " win")}
-        ${outcomeBtn("DRAW", "Draw")}
-        ${outcomeBtn("AWAY", m.away + " win")}
-      </div>
-    </div>`;
-}
-
-function wireMatchRow(row) {
-  if (row.dataset.locked === "true") return;
-
-  const id = Number(row.dataset.matchId);
-  const match = groupMatchById(id);
-  const debouncedSave = debounce(() => persistGroupPrediction(id), 400);
-
-  $$(".outcome-btn", row).forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (match && isMatchLocked(match)) {
-        $("#groups-save-status").textContent = "Locked 1 hour before UK kick-off";
-        renderGroupsTab();
-        return;
-      }
-
-      $$(".outcome-btn", row).forEach((b) => b.classList.remove("is-selected"));
-      btn.classList.add("is-selected");
-
-      session.predictions.groups = session.predictions.groups || {};
-
-      const pick = btn.dataset.pick.toUpperCase();
-
-      session.predictions.groups[id] = {
-        ...(session.predictions.groups[id] || {}),
-        winner: pick,
-      };
-
-      debouncedSave();
-      updateGroupsProgress();
-    });
+  d.characters.forEach((c) => {
+    const route = `#/characters/${c.id}`;
+    c.nodes.forEach((t, i) => add({ id: `n-char_${c.id}-${i}`, route, section: "Characters", group: c.name, text: t, colour: COLOURS[c.id] }));
+    addMine(`char_${c.id}`, route, "Characters", c.name, COLOURS[c.id]);
   });
 
-  $$(".score-input", row).forEach((input) => {
-    input.addEventListener("input", () => {
-      if (match && isMatchLocked(match)) {
-        $("#groups-save-status").textContent = "Locked 1 hour before UK kick-off";
-        renderGroupsTab();
-        return;
-      }
-
-      const side = input.dataset.side === "home" ? "scoreHome" : "scoreAway";
-      const value = input.value === "" ? null : Math.max(0, Math.min(20, parseInt(input.value, 10) || 0));
-
-      session.predictions.groups = session.predictions.groups || {};
-
-      session.predictions.groups[id] = {
-        ...(session.predictions.groups[id] || {}),
-        [side]: value,
-      };
-
-      const p = session.predictions.groups[id];
-
-      if (typeof p.scoreHome === "number" && typeof p.scoreAway === "number") {
-        const inferred = p.scoreHome > p.scoreAway
-          ? "HOME"
-          : p.scoreHome < p.scoreAway
-            ? "AWAY"
-            : "DRAW";
-
-        p.winner = inferred;
-
-        $$(".outcome-btn", row).forEach((b) => {
-          b.classList.toggle("is-selected", b.dataset.pick.toUpperCase() === inferred);
-        });
-      }
-
-      debouncedSave();
-      updateGroupsProgress();
-    });
+  d.settings.forEach((s) => {
+    const route = `#/settings/${s.id}`;
+    s.nodes.forEach((t, i) => add({ id: `n-setting_${s.id}-${i}`, route, section: "Settings", group: s.name, text: t, colour: COLOURS[s.id] }));
+    addMine(`setting_${s.id}`, route, "Settings", s.name, COLOURS[s.id]);
   });
+
+  customDiagrams().forEach((g) => addMine(`diagram_${g.id}`, `#/diagram/${g.id}`, "My diagrams", g.name, safeColour(g.colour)));
+
+  d.incidents.forEach((inc) => {
+    const route = `#/incidents/${inc.id}`;
+    add({ id: `inc-${inc.id}-what`, route, section: "Incidents", group: inc.title, text: inc.what, colour: COLOURS.curley });
+    (inc.notes || []).forEach((t, i) => add({ id: `inc-${inc.id}-n${i}`, route, section: "Incidents", group: inc.title, text: t, colour: COLOURS.curley }));
+    if (inc.para) add({ id: `inc-${inc.id}-para`, route, section: "Incidents", group: `${inc.title} — paragraph`, text: `${inc.para_title}: ${inc.para}`, colour: COLOURS.curley });
+    addMine(`incident_${inc.id}`, route, "Incidents", inc.title, COLOURS.curley);
+  });
+
+  d.notesAndQuotes.forEach((pg) => {
+    const route = `#/notes/${pg.page}`;
+    pg.items.forEach((t, i) => add({ id: `nq-${pg.page}-${i}`, route, section: "Notes & Quotes", group: `Book p.${pg.page}`, text: t, colour: COLOURS.lennie }));
+    addMine(`notes_${pg.page}`, route, "Notes & Quotes", `Book p.${pg.page}`, COLOURS.lennie);
+  });
+  addMine("notes_mine", "#/notes/mine", "Notes & Quotes", "My own notes", MINE);
+
+  d.paragraphs.forEach((p) => {
+    const route = `#/paragraphs/${p.id}`;
+    add({ id: `para-${p.id}-text`, route, section: "Paragraphs", group: p.title, text: p.text, colour: COLOURS.george });
+    if (p.feedback) {
+      const fb = [p.feedback.mark, p.feedback.comment, p.feedback.target].filter(Boolean).join(" — ");
+      add({ id: `para-${p.id}-fb`, route, section: "Paragraphs", group: `${p.title} — feedback`, text: fb, colour: COLOURS.george });
+    }
+    addMine(`para_${p.id}`, route, "Paragraphs", p.title, COLOURS.george);
+  });
+
+  state.index = idx;
 }
 
-async function persistGroupPrediction(id) {
-  const match = groupMatchById(id);
+// -----------------------------------------------------------------
+// Router + page transitions
+// -----------------------------------------------------------------
+function parseRoute() {
+  const h = location.hash.replace(/^#\/?/, "");
+  const [page = "", sub = ""] = h.split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
+  return { page: page || "home", sub };
+}
 
-  if (match && isMatchLocked(match)) {
-    $("#groups-save-status").textContent = "Locked 1 hour before UK kick-off";
-    renderGroupsTab();
-    return;
+let navToken = 0;
+async function navigate() {
+  const r = parseRoute();
+  const prev = state.route;
+  const samePage = prev && prev.page === r.page && (["incidents", "notes", "paragraphs"].includes(r.page) || prev.sub === r.sub);
+  state.route = r;
+  setActiveNav(r.page);
+
+  const view = $("#view");
+  const token = ++navToken;
+  if (!samePage && prev && !reduced()) {
+    view.classList.remove("is-entering");
+    view.classList.add("is-leaving");
+    await wait(150);
+    if (token !== navToken) return;
+    view.classList.remove("is-leaving");
   }
-
-  setSaveStatus("groups", true);
-
-  try {
-    await savePredictions(session.code, {
-      name: session.name,
-      groups: session.predictions.groups,
-    });
-  } catch (e) {
-    console.error(e);
+  render({ animate: !samePage });
+  if (!samePage) {
+    view.classList.remove("is-entering");
+    void view.offsetWidth;
+    view.classList.add("is-entering");
   }
-
-  setSaveStatus("groups", false);
-  updateUserScoreDisplay();
+  const jump = state.pendingJump || (["incidents", "notes", "paragraphs"].includes(r.page) && r.sub ? routeTargetId(r) : null);
+  state.pendingJump = null;
+  if (jump) requestAnimationFrame(() => jumpTo(jump));
+  else if (!samePage) window.scrollTo({ top: 0, behavior: "auto" });
 }
 
-function updateGroupsProgress() {
-  const total = GROUP_MATCHES.length;
-  const groups = session.predictions.groups || {};
-  const done = Object.values(groups).filter((p) => p.winner).length;
-
-  $("#groups-progress").textContent = `${done} / ${total} predicted`;
+function routeTargetId(r) {
+  if (r.page === "incidents") return `inc-${r.sub}`;
+  if (r.page === "notes") return `nq-${r.sub}`;
+  if (r.page === "paragraphs") return `para-${r.sub}`;
+  return null;
 }
 
-function setSaveStatus(scope, saving) {
-  const el = $(`#${scope}-save-status`);
+function setActiveNav(page) {
+  const key = page === "diagram" ? "characters" : page;
+  $$("#nav a").forEach((a) => a.classList.toggle("is-active", a.dataset.nav === key));
+}
+
+function jumpTo(id) {
+  const el = document.getElementById(id);
   if (!el) return;
-
-  el.textContent = saving ? "Saving…" : "Saved";
-  el.classList.toggle("is-saving", saving);
+  el.classList.add("is-in");
+  el.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1800);
 }
 
 // -----------------------------------------------------------------
-// KNOCKOUT BRACKET — score predictor, winners auto-advance
-//   Scoring per match:  +7 correct winner,  +7 exact score (max 14)
-//   Whole bracket locks at one fixed UTC instant (same worldwide).
+// Render
 // -----------------------------------------------------------------
-const KNOCKOUT_LOCK_UTC = Date.UTC(2026, 5, 28, 19, 0, 0); // 28 Jun 2026, 20:00 UK (BST) = 19:00 UTC
-const KNOCKOUT_LOCK_LABEL = "8:00 PM UK · Sun 28 Jun";
-function isKnockoutLocked() { return Date.now() >= KNOCKOUT_LOCK_UTC; }
+function render({ animate = true } = {}) {
+  const { page, sub } = state.route;
+  const view = $("#view");
+  let html = "";
+  let title = SECTION[page] || "Not found";
 
-const KO_WIN_POINTS = 7;
-const KO_EXACT_POINTS = 7;
-
-// Bracket structure. home/away is either {team} (fixed R32), {win:id} or {lose:id}.
-const KO_MATCHES = [
-  { id: "r32-1",  round: "R32", home: { team: "RSA" }, away: { team: "CAN" } },
-  { id: "r32-2",  round: "R32", home: { team: "GER" }, away: { team: "PAR" } },
-  { id: "r32-3",  round: "R32", home: { team: "BRA" }, away: { team: "JPN" } },
-  { id: "r32-4",  round: "R32", home: { team: "CIV" }, away: { team: "NOR" } },
-  { id: "r32-5",  round: "R32", home: { team: "NED" }, away: { team: "MAR" } },
-  { id: "r32-6",  round: "R32", home: { team: "FRA" }, away: { team: "SWE" } },
-  { id: "r32-7",  round: "R32", home: { team: "MEX" }, away: { team: "ECU" } },
-  { id: "r32-8",  round: "R32", home: { team: "ENG" }, away: { team: "COD" } },
-  { id: "r32-9",  round: "R32", home: { team: "POR" }, away: { team: "CRO" } },
-  { id: "r32-10", round: "R32", home: { team: "ESP" }, away: { team: "AUT" } },
-  { id: "r32-11", round: "R32", home: { team: "USA" }, away: { team: "BIH" } },
-  { id: "r32-12", round: "R32", home: { team: "BEL" }, away: { team: "SEN" } },
-  { id: "r32-13", round: "R32", home: { team: "COL" }, away: { team: "GHA" } },
-  { id: "r32-14", round: "R32", home: { team: "AUS" }, away: { team: "EGY" } },
-  { id: "r32-15", round: "R32", home: { team: "SUI" }, away: { team: "ALG" } },
-  { id: "r32-16", round: "R32", home: { team: "ARG" }, away: { team: "CPV" } },
-
-  // Round of 16 wiring follows the official FIFA bracket (matches 89–96).
-  { id: "r16-1", round: "R16", home: { win: "r32-2"  }, away: { win: "r32-6"  } },
-  { id: "r16-2", round: "R16", home: { win: "r32-1"  }, away: { win: "r32-5"  } },
-  { id: "r16-3", round: "R16", home: { win: "r32-3"  }, away: { win: "r32-4"  } },
-  { id: "r16-4", round: "R16", home: { win: "r32-7"  }, away: { win: "r32-8"  } },
-  { id: "r16-5", round: "R16", home: { win: "r32-9"  }, away: { win: "r32-10" } },
-  { id: "r16-6", round: "R16", home: { win: "r32-11" }, away: { win: "r32-12" } },
-  { id: "r16-7", round: "R16", home: { win: "r32-16" }, away: { win: "r32-14" } },
-  { id: "r16-8", round: "R16", home: { win: "r32-13" }, away: { win: "r32-15" } },
-
-  // Quarter-finals (matches 97–100).
-  { id: "qf-1", round: "QF", home: { win: "r16-1" }, away: { win: "r16-2" } },
-  { id: "qf-2", round: "QF", home: { win: "r16-5" }, away: { win: "r16-6" } },
-  { id: "qf-3", round: "QF", home: { win: "r16-3" }, away: { win: "r16-4" } },
-  { id: "qf-4", round: "QF", home: { win: "r16-7" }, away: { win: "r16-8" } },
-
-  { id: "sf-1", round: "SF", home: { win: "qf-1" }, away: { win: "qf-2" } },
-  { id: "sf-2", round: "SF", home: { win: "qf-3" }, away: { win: "qf-4" } },
-
-  { id: "third", round: "THIRD", home: { lose: "sf-1" }, away: { lose: "sf-2" } },
-  { id: "final", round: "FINAL", home: { win:  "sf-1" }, away: { win:  "sf-2" } },
-];
-
-const KO_BY_ID = Object.fromEntries(KO_MATCHES.map((m) => [m.id, m]));
-
-const KO_SHORT = {
-  "r32-1": "R32-1", "r32-2": "R32-2", "r32-3": "R32-3", "r32-4": "R32-4",
-  "r32-5": "R32-5", "r32-6": "R32-6", "r32-7": "R32-7", "r32-8": "R32-8",
-  "r32-9": "R32-9", "r32-10": "R32-10", "r32-11": "R32-11", "r32-12": "R32-12",
-  "r32-13": "R32-13", "r32-14": "R32-14", "r32-15": "R32-15", "r32-16": "R32-16",
-  "r16-1": "R16-1", "r16-2": "R16-2", "r16-3": "R16-3", "r16-4": "R16-4",
-  "r16-5": "R16-5", "r16-6": "R16-6", "r16-7": "R16-7", "r16-8": "R16-8",
-  "qf-1": "QF1", "qf-2": "QF2", "qf-3": "QF3", "qf-4": "QF4",
-  "sf-1": "SF1", "sf-2": "SF2", "third": "3rd play-off", "final": "Final",
-};
-
-const KO_ROUND_ORDER = ["R32", "R16", "QF", "SF", "THIRD", "FINAL"];
-const KO_ROUND_LABEL = {
-  R32: "Round of 32", R16: "Round of 16", QF: "Quarter-finals",
-  SF: "Semi-finals", THIRD: "Third-place play-off", FINAL: "Final",
-};
-
-function koName(code) { return code && TEAMS[code] ? TEAMS[code].name : "—"; }
-function koFlag(code) { return code && TEAMS[code] ? flagUrl(TEAMS[code].iso) : ""; }
-
-function koDecideWinner(pred, home, away) {
-  if (!home || !away) return null;
-  const h = toScoreNumber(pred && pred.h);
-  const a = toScoreNumber(pred && pred.a);
-  if (h === null || a === null) return null;
-  if (h > a) return home;
-  if (a > h) return away;
-  if (pred.pen === "home") return home;
-  if (pred.pen === "away") return away;
-  return null;
-}
-
-// Resolve every match's participants + winner/loser from a set of predictions.
-function koResolveAll(ko) {
-  ko = ko || {};
-  const cache = {};
-
-  function side(ref) {
-    if (ref.team) return ref.team;
-    const src = teams(ref.win || ref.lose);
-    if (ref.win) return src.winner;
-    return src.loser;
+  switch (page) {
+    case "home": html = renderHome(); title = "Revision Notes"; break;
+    case "exam": html = renderExam(); break;
+    case "characters": {
+      if (sub) { const s = subjectFor("characters", sub); html = s ? renderSpiderPage(s) : renderNotFound(); if (s) title = s.name; }
+      else html = renderCharactersIndex();
+      break;
+    }
+    case "settings": {
+      if (sub) { const s = subjectFor("settings", sub); html = s ? renderSpiderPage(s) : renderNotFound(); if (s) title = s.name; }
+      else html = renderSettingsIndex();
+      break;
+    }
+    case "diagram": { const s = subjectFor("diagram", sub); html = s ? renderSpiderPage(s) : renderNotFound(); if (s) title = s.name; break; }
+    case "incidents": html = renderIncidents(); break;
+    case "notes": html = renderNotes(); break;
+    case "paragraphs": html = renderParagraphs(); break;
+    default: html = renderNotFound();
   }
 
-  function teams(id) {
-    if (cache[id]) return cache[id];
-    cache[id] = { home: null, away: null, winner: null, loser: null }; // guard against loops
-    const m = KO_BY_ID[id];
-    const home = side(m.home);
-    const away = side(m.away);
-    const winner = koDecideWinner(ko[id], home, away);
-    const loser = winner ? (winner === home ? away : home) : null;
-    const r = { home, away, winner, loser };
-    cache[id] = r;
-    return r;
-  }
-
-  KO_MATCHES.forEach((m) => teams(m.id));
-  return cache;
+  view.innerHTML = html;
+  document.title = `${title} · Of Mice and Men`;
+  afterRender(animate);
 }
 
-// New knockout scoring: compares a player's bracket to the actual (admin) bracket.
-function scoreKnockout(playerKo, resultsKo) {
-  let total = 0;
-  let correct = 0;
-
-  const P = koResolveAll(playerKo || {});
-  const R = koResolveAll(resultsKo || {});
-
-  for (const m of KO_MATCHES) {
-    const r = R[m.id];
-    const rp = (resultsKo || {})[m.id] || {};
-    const rH = toScoreNumber(rp.h);
-    const rA = toScoreNumber(rp.a);
-
-    if (!r.winner || rH === null || rA === null) continue; // result not entered yet
-
-    const p = P[m.id];
-    const pp = (playerKo || {})[m.id] || {};
-    const pH = toScoreNumber(pp.h);
-    const pA = toScoreNumber(pp.a);
-
-    if (p.winner && p.winner === r.winner) {
-      total += KO_WIN_POINTS;
-      correct += 1;
-    }
-
-    if (p.home && p.away && pH !== null && pA !== null) {
-      const sameMatch =
-        (p.home === r.home && p.away === r.away) ||
-        (p.home === r.away && p.away === r.home);
-
-      if (sameMatch) {
-        const pg = { [p.home]: pH, [p.away]: pA };
-        const rg = { [r.home]: rH, [r.away]: rA };
-        if (pg[r.home] === rg[r.home] && pg[r.away] === rg[r.away]) {
-          total += KO_EXACT_POINTS;
-          correct += 1;
-        }
-      }
-    }
-  }
-
-  return { total, correct };
+function renderNotFound() {
+  return `<div class="page-head"><h1>Page not found</h1></div><p>That page isn't in the notebook. <a href="#/">Back to the cover</a>.</p>`;
 }
 
-// -----------------------------------------------------------------
-// Bracket renderer (shared by player + admin)
-// -----------------------------------------------------------------
-function koTbdLabel(ref) {
-  const src = KO_SHORT[ref.win || ref.lose] || "TBD";
-  return (ref.win ? "Winner of " : "Loser of ") + src;
-}
-
-function koMatchCard(m, resolved, ko, locked) {
-  const t = resolved[m.id];
-  const pred = ko[m.id] || {};
-  const ready = !!(t.home && t.away);
-  const h = toScoreNumber(pred.h);
-  const a = toScoreNumber(pred.a);
-  const isDraw = ready && h !== null && a !== null && h === a;
-  const dis = (locked || !ready) ? "disabled" : "";
-  const winSide = t.winner ? (t.winner === t.home ? "home" : "away") : null;
-
-  const row = (sideKey) => {
-    const code = sideKey === "home" ? t.home : t.away;
-    const ref = sideKey === "home" ? m.home : m.away;
-    const win = winSide === sideKey ? "is-win" : "";
-    const val = sideKey === "home" ? (pred.h ?? "") : (pred.a ?? "");
-    const label = ready ? koName(code) : koTbdLabel(ref);
-
-    return `
-      <div class="kb-row ${ready ? "" : "kb-row--tbd"} ${win}">
-        ${ready
-          ? `<img class="kb-flag" src="${koFlag(code)}" alt="" loading="lazy" />`
-          : `<span class="kb-flag kb-flag--tbd"></span>`}
-        <span class="kb-team">${label}</span>
-        <input class="kb-score" type="number" inputmode="numeric" min="0" max="20"
-               value="${val}" data-match="${m.id}" data-side="${sideKey}" ${dis} />
-      </div>`;
-  };
-
-  const pen = (isDraw)
-    ? `<div class="kb-pen">
-         <span class="kb-pen__label">Pens won by</span>
-         <button type="button" class="kb-pen__btn ${pred.pen === "home" ? "is-active" : ""}" data-match="${m.id}" data-pen-pick="home" ${dis}>${koName(t.home)}</button>
-         <button type="button" class="kb-pen__btn ${pred.pen === "away" ? "is-active" : ""}" data-match="${m.id}" data-pen-pick="away" ${dis}>${koName(t.away)}</button>
-       </div>`
-    : "";
-
-  return `
-    <div class="kb-match" data-match="${m.id}">
-      <div class="kb-match__no">${KO_SHORT[m.id]}</div>
-      ${row("home")}
-      ${row("away")}
-      ${pen}
-    </div>`;
-}
-
-function paintKoBracket(root, opts) {
-  const ko = opts.ko;
-  const locked = opts.isLocked();
-  const resolved = koResolveAll(ko);
-
-  root.innerHTML = KO_ROUND_ORDER.map((rd) => {
-    const ms = KO_MATCHES.filter((m) => m.round === rd);
-    return `
-      <section class="kb-round">
-        <h3 class="kb-round__title">${KO_ROUND_LABEL[rd]}</h3>
-        <div class="kb-matches">${ms.map((m) => koMatchCard(m, resolved, ko, locked)).join("")}</div>
-      </section>`;
-  }).join("");
-
-  if (locked) return;
-
-  $$(".kb-score", root).forEach((inp) => {
-    inp.addEventListener("change", () => {
-      const id = inp.dataset.match;
-      const v = inp.value === "" ? null : Math.max(0, Math.min(20, parseInt(inp.value, 10) || 0));
-      ko[id] = ko[id] || {};
-      ko[id][inp.dataset.side === "home" ? "h" : "a"] = v;
-      opts.onSave();
-      paintKoBracket(root, opts);
-    });
-  });
-
-  $$("[data-pen-pick]", root).forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.match;
-      ko[id] = ko[id] || {};
-      ko[id].pen = btn.dataset.penPick;
-      opts.onSave();
-      paintKoBracket(root, opts);
-    });
-  });
-}
-
-// -----------------------------------------------------------------
-// PLAYER bracket tab
-// -----------------------------------------------------------------
-function ensureKo() {
-  session.predictions = session.predictions || {};
-  session.predictions.ko = session.predictions.ko || {};
-  return session.predictions.ko;
-}
-
-function koIntroHtml() {
-  const locked = isKnockoutLocked();
-  return `
-    <h2 class="panel-title">Knockout bracket</h2>
-    <p class="panel-sub">
-      Predict the <strong>score</strong> of every match. The winner you pick automatically advances to the
-      next round, all the way to the Final — so build your whole bracket from the Round of 32 to the trophy.
-      Drew it? Tap who goes through on penalties.
-    </p>
-    <div class="scoring-key">
-      <span><i class="dot-orange"></i>Correct winner <strong>+7</strong></span>
-      <span><i class="dot-blue"></i>Exact score <strong>+7 more</strong> (14 max per match)</span>
-    </div>
-    <p class="panel-sub" style="margin-top:12px">
-      ${locked
-        ? "🔒 Predictions are now locked."
-        : `🔒 Everything locks at <strong>${KNOCKOUT_LOCK_LABEL}</strong>. That's one fixed moment worldwide — 9 PM in France, etc. — so changing your phone's location or using a VPN can't get you extra time.`}
-    </p>`;
-}
-
-const koSaveDebounced = debounce(async () => {
-  if (isKnockoutLocked()) { renderBracketTab(); return; }
-  setSaveStatus("bracket", true);
-  try {
-    await savePredictions(session.code, { name: session.name, ko: session.predictions.ko });
-  } catch (e) {
-    console.error(e);
-  }
-  setSaveStatus("bracket", false);
-  updateUserScoreDisplay();
-}, 600);
-
-async function renderBracketTab() {
-  const intro = document.querySelector("#tab-bracket .panel-intro");
-  if (intro) intro.innerHTML = koIntroHtml();
-
-  const status = $("#bracket-save-status");
-  if (status) {
-    status.textContent = isKnockoutLocked()
-      ? "Locked — predictions are final"
-      : `Saved automatically · locks ${KNOCKOUT_LOCK_LABEL}`;
-  }
-
-  paintKoBracket($("#bracket-container"), {
-    ko: ensureKo(),
-    isLocked: () => isKnockoutLocked(),
-    onSave: () => koSaveDebounced(),
-  });
-}
-
-async function saveKoResults(ko) {
-  await update(ref(db, "results/global"), { ko, updatedAt: serverTimestamp() });
-}
-
-// -----------------------------------------------------------------
-// SCORING
-// -----------------------------------------------------------------
-const GROUP_OUTCOME_POINTS = 6;
-const GROUP_ONE_SCORE_POINTS = 7;
-const GROUP_EXACT_BONUS_POINTS = 14;
-
-function toScoreNumber(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-
-  return null;
-}
-
-function inferWinnerFromScores(homeScore, awayScore) {
-  if (homeScore === null || awayScore === null) return null;
-  if (homeScore > awayScore) return "HOME";
-  if (homeScore < awayScore) return "AWAY";
-  return "DRAW";
-}
-
-function scoreOnePerson(p, results) {
-  let total = 0;
-  let correct = 0;
-
-  const gp = p.groups || {};
-  const gr = results.groups || {};
-
-  for (const [id, pred] of Object.entries(gp)) {
-    const r = gr[id];
-    if (!r || !pred) continue;
-
-    const predHome = toScoreNumber(pred.scoreHome);
-    const predAway = toScoreNumber(pred.scoreAway);
-    const realHome = toScoreNumber(r.scoreHome);
-    const realAway = toScoreNumber(r.scoreAway);
-
-    const hasPredictedScore = predHome !== null && predAway !== null;
-    const hasRealScore = realHome !== null && realAway !== null;
-
-    const predictedWinner = pred.winner || inferWinnerFromScores(predHome, predAway);
-    const realWinner = r.winner || inferWinnerFromScores(realHome, realAway);
-
-    if (!realWinner && !hasRealScore) continue;
-
-    const exactScore =
-      hasPredictedScore &&
-      hasRealScore &&
-      predHome === realHome &&
-      predAway === realAway;
-
-    const oneTeamScoreCorrect =
-      hasPredictedScore &&
-      hasRealScore &&
-      !exactScore &&
-      (predHome === realHome || predAway === realAway);
-
-    const correctOutcome =
-      exactScore ||
-      (
-        predictedWinner &&
-        realWinner &&
-        predictedWinner === realWinner
-      );
-
-    if (correctOutcome) {
-      total += GROUP_OUTCOME_POINTS;
-      correct += 1;
-    }
-
-    if (exactScore) {
-      total += GROUP_EXACT_BONUS_POINTS;
-      correct += 1;
-    } else if (oneTeamScoreCorrect) {
-      total += GROUP_ONE_SCORE_POINTS;
-      correct += 1;
-    }
-  }
-
-  const koPts = scoreKnockout(p.ko, results.ko);
-  total += koPts.total;
-  correct += koPts.correct;
-
-  return { total, correct };
-}
-
-async function computeLeaderboard() {
-  const [preds, results] = await Promise.all([
-    fetchAllPredictions(),
-    fetchResults(),
-  ]);
-
-  const rows = preds
-    .filter((p) => p.code !== "TEST")
-    .map((p) => ({
-      code: p.code,
-      name: p.name || "—",
-      ...scoreOnePerson(p, results),
-    }));
-
-  rows.sort((a, b) => b.total - a.total || b.correct - a.correct);
-
-  return rows;
-}
-
-async function renderLeaderboardTab() {
-  const root = $("#leaderboard-container");
-
-  if (LEADERBOARD_LOCKED && !session.isAdmin) {
-    root.innerHTML = `
-      <div class="ko-empty">
-        <div class="ko-empty__badge">🔒</div>
-        <h3 class="ko-empty__title">Locked</h3>
-        <p class="ko-empty__text">Final results will be revealed after the Final. No peeking — let the suspense build.</p>
-        <div class="ko-empty__meta">Standings hidden until the trophy is lifted</div>
-      </div>`;
-    return;
-  }
-
-  root.innerHTML = `
-    <div class="leaderboard-row leaderboard-row--head">
-      <div class="lb-rank">#</div>
-      <div>Player</div>
-      <div class="lb-correct">Correct</div>
-      <div class="lb-pts">Points</div>
-    </div>
-    <div class="leaderboard-row">
-      <div></div>
-      <div>Loading…</div>
-      <div></div>
-      <div></div>
-    </div>`;
-
-  const rows = await computeLeaderboard();
-
-  let bodyHtml = "";
-
-  if (session.isTest) {
-    const topScore = rows.length ? rows[0].total : 0;
-
-    bodyHtml += renderLeaderboardRow({
-      code: "TEST",
-      name: session.name + " ★",
-      correct: 999,
-      total: topScore + 1000,
-    }, 1, true);
-  }
-
-  rows.forEach((r, i) => {
-    bodyHtml += renderLeaderboardRow(
-      r,
-      session.isTest ? i + 2 : i + 1,
-      r.code === session.code && !session.isTest,
-    );
-  });
-
-  if (!rows.length && !session.isTest) {
-    bodyHtml = `
-      <div class="leaderboard-row">
-        <div></div>
-        <div style="opacity:.6">No predictions yet.</div>
-        <div></div>
-        <div></div>
-      </div>`;
-  }
-
-  root.innerHTML = `
-    <div class="leaderboard-row leaderboard-row--head">
-      <div class="lb-rank">#</div>
-      <div>Player</div>
-      <div class="lb-correct">Correct</div>
-      <div class="lb-pts">Points</div>
-    </div>
-    ${bodyHtml}`;
-}
-
-function renderLeaderboardRow(r, rank, isMe) {
-  return `
-    <div class="leaderboard-row ${isMe ? "leaderboard-row--me" : ""}">
-      <div class="lb-rank ${rank === 1 ? "lb-rank--1" : ""}">${rank}</div>
-      <div class="lb-name">${escapeHtml(r.name)}</div>
-      <div class="lb-correct">${r.correct}</div>
-      <div class="lb-pts">${r.total}</div>
-    </div>`;
-}
-
-async function updateUserScoreDisplay() {
-  if (session.isTest) {
-    $("#user-score-display").textContent = "∞ pts ★";
-    return;
-  }
-
-  const results = await fetchResults();
-  const { total } = scoreOnePerson(session.predictions, results);
-
-  $("#user-score-display").textContent = `${total} pts`;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  })[c]);
-}
-
-// -----------------------------------------------------------------
-// ADMIN
-// -----------------------------------------------------------------
-function gotoAdmin() {
-  show("view-admin");
-
-  $("#admin-gate").classList.remove("hidden");
-  $("#admin-tools").classList.add("hidden");
-  $("#admin-pw").value = "";
-  $("#admin-pw-error").hidden = true;
-}
-
-function unlockAdmin() {
-  session.isAdmin = true;
-
-  $("#admin-gate").classList.add("hidden");
-  $("#admin-tools").classList.remove("hidden");
-
-  renderAdminLeaderboard();
-  renderAdminResults();
-  renderAdminCodes();
-}
-
-async function renderAdminLeaderboard() {
-  const root = $("#admin-leaderboard");
-
-  root.innerHTML = `<div style="opacity:.6">Loading…</div>`;
-
-  const rows = await computeLeaderboard();
-
-  if (!rows.length) {
-    root.innerHTML = `<div style="opacity:.6">No predictions submitted yet.</div>`;
-    return;
-  }
-
-  root.innerHTML = `
-    <div class="leaderboard">
-      <div class="leaderboard-row leaderboard-row--head">
-        <div class="lb-rank">#</div>
-        <div>Player</div>
-        <div class="lb-correct">Correct</div>
-        <div class="lb-pts">Points</div>
-      </div>
-      ${rows.map((r, i) => renderLeaderboardRow(r, i + 1, false)).join("")}
-    </div>`;
-}
-
-function ensureAdminPredictionGraphStyles() {
-  if ($("#admin-prediction-graph-style")) return;
-
-  const style = document.createElement("style");
-
-  style.id = "admin-prediction-graph-style";
-  style.textContent = `
-    .admin-prediction-graph {
-      background: rgba(255,255,255,0.55);
-      border: 1px solid var(--paper-line);
-      border-radius: 8px;
-      padding: 10px 12px;
-    }
-    .admin-graphs-group { margin-top: 28px; }
-    .admin-graphs-group:first-child { margin-top: 0; }
-    .admin-graphs-group__title {
-      font-family: var(--font-display);
-      font-size: 28px;
-      font-weight: 900;
-      color: var(--navy);
-      margin: 0 0 10px;
-    }
-    .admin-graphs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 14px;
-    }
-    .prediction-game-card {
-      background: rgba(255,255,255,0.55);
-      border: 1.5px solid var(--paper-line);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .prediction-game-card__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: var(--navy);
-      color: var(--paper);
-      padding: 10px 12px;
-    }
-    .prediction-game-card__teams {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .prediction-game-card__meta {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: rgba(244,237,224,.72);
-      white-space: nowrap;
-    }
-    .prediction-game-card .admin-prediction-graph {
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-    }
-    .admin-prediction-graph__title {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      color: var(--ink-mute);
-      margin-bottom: 8px;
-    }
-    .prediction-graph-row {
-      display: grid;
-      grid-template-columns: 86px minmax(120px, 1fr) 42px;
-      gap: 8px;
-      align-items: start;
-      margin-top: 8px;
-    }
-    .prediction-graph-label,
-    .prediction-graph-count {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--navy);
-    }
-    .prediction-graph-count { text-align: right; }
-    .prediction-graph-bar {
-      height: 10px;
-      background: rgba(11,29,58,.12);
-      border-radius: 999px;
-      overflow: hidden;
-      margin-top: 2px;
-    }
-    .prediction-graph-fill {
-      height: 100%;
-      background: var(--orange);
-    }
-    .prediction-graph-names {
-      grid-column: 2 / -1;
-      color: var(--ink-soft);
-      font-size: 12px;
-      line-height: 1.35;
-      max-height: 64px;
-      overflow: auto;
-      padding-right: 4px;
-    }
-    .prediction-graph-missing {
-      margin-top: 8px;
-      color: var(--ink-mute);
-      font-size: 12px;
-    }
-    @media (max-width: 700px) {
-      .admin-graphs-grid { grid-template-columns: 1fr; }
-      .prediction-game-card__head { align-items: flex-start; flex-direction: column; }
-      .prediction-graph-row { grid-template-columns: 72px 1fr 34px; }
-      .prediction-graph-names { grid-column: 1 / -1; }
-    }
-  `;
-
-  document.head.appendChild(style);
-}
-
-function predictionScoreLabel(pred) {
-  if (typeof pred.scoreHome === "number" && typeof pred.scoreAway === "number") {
-    return ` (${pred.scoreHome}-${pred.scoreAway})`;
-  }
-
-  return "";
-}
-
-function buildGroupPredictionStats(predictions) {
-  const players = predictions.filter((p) => p.code !== "TEST");
-  const stats = {};
-
-  GROUP_MATCHES.forEach((match) => {
-    stats[match.id] = {
-      total: players.length,
-      HOME: [],
-      DRAW: [],
-      AWAY: [],
-      missing: 0,
-    };
-  });
-
-  players.forEach((player) => {
-    const groups = player.groups || {};
-
-    GROUP_MATCHES.forEach((match) => {
-      const pred = groups[match.id];
-      const bucket = stats[match.id];
-
-      if (!pred || !["HOME", "DRAW", "AWAY"].includes(pred.winner)) {
-        bucket.missing += 1;
-        return;
-      }
-
-      bucket[pred.winner].push({
-        name: player.name || player.code || "Player",
-        score: predictionScoreLabel(pred),
-      });
-    });
-  });
-
-  return stats;
-}
-
-function renderPredictionNameList(items) {
-  if (!items.length) return `<span style="opacity:.55">None</span>`;
-
-  return items
-    .map((item) => `<span>${escapeHtml(item.name)}${escapeHtml(item.score)}</span>`)
-    .join(", ");
-}
-
-function renderAdminPredictionGraph(match, stats) {
-  if (!stats || !stats.total) {
-    return `
-      <div class="admin-prediction-graph">
-        <div class="admin-prediction-graph__title">Prediction graph</div>
-        <div class="prediction-graph-missing">No saved predictions yet.</div>
-      </div>`;
-  }
-
-  const choices = [
-    { key: "HOME", label: `${match.home} win` },
-    { key: "DRAW", label: "Draw" },
-    { key: "AWAY", label: `${match.away} win` },
+// ---------- home / cover ----------
+function renderHome() {
+  const d = state.data;
+  const quoteCount = state.index.filter((i) => i.isQuote).length;
+  const mineCount = state.index.filter((i) => i.mine).length;
+  const cards = [
+    { href: "#/exam", num: "01", title: "Exam essentials", text: "AO1–AO4 and context at a glance.", count: `${d.assessmentObjectives.length} assessment objectives`, c: COLOURS.boss },
+    { href: "#/characters", num: "02", title: "Characters", text: "A spider diagram for every character.", count: `${d.characters.length} characters${customDiagrams().length ? ` · ${customDiagrams().length} of mine` : ""}`, c: COLOURS.curley },
+    { href: "#/settings", num: "03", title: "Settings", text: "The natural world and the bunkhouse.", count: `${d.settings.length} settings`, c: COLOURS.nature },
+    { href: "#/incidents", num: "04", title: "Incidents", text: "Key moments, what happens and why it matters.", count: `${d.incidents.length} incidents`, c: COLOURS.wife },
+    { href: "#/notes", num: "05", title: "Notes & Quotes", text: "The notebook pages, quote by quote.", count: `${d.notesAndQuotes.length} pages`, c: COLOURS.lennie },
+    { href: "#/paragraphs", num: "06", title: "Paragraphs", text: "Model paragraphs with teacher feedback.", count: `${d.paragraphs.length} paragraphs`, c: COLOURS.george },
   ];
-
   return `
-    <div class="admin-prediction-graph">
-      <div class="admin-prediction-graph__title">Prediction graph (${stats.total} players)</div>
-      ${choices.map((choice) => {
-        const items = stats[choice.key] || [];
-        const percent = Math.round((items.length / stats.total) * 100);
-
-        return `
-          <div class="prediction-graph-row">
-            <div class="prediction-graph-label">${choice.label}</div>
-            <div>
-              <div class="prediction-graph-bar">
-                <div class="prediction-graph-fill" style="width:${percent}%"></div>
-              </div>
-            </div>
-            <div class="prediction-graph-count">${items.length}</div>
-            <div class="prediction-graph-names">${renderPredictionNameList(items)}</div>
-          </div>`;
-      }).join("")}
-      ${stats.missing ? `<div class="prediction-graph-missing">${stats.missing} players have not picked this game yet.</div>` : ""}
-    </div>`;
-}
-
-function renderAdminGraphCard(match, stats) {
-  return `
-    <div class="prediction-game-card">
-      <div class="prediction-game-card__head">
-        <div class="prediction-game-card__teams">
-          <span>${String(match.id).padStart(2, "0")}</span>
-          <img class="team-flag" src="${flagUrl(TEAMS[match.home].iso)}" alt="" />
-          <span>${match.home} v ${match.away}</span>
-          <img class="team-flag" src="${flagUrl(TEAMS[match.away].iso)}" alt="" />
+    <section class="cover">
+      <div class="cover__inner">
+        <div class="cover__eyebrow">GCSE English Literature</div>
+        <h1>Of Mice <em>and</em> Men</h1>
+        <p class="cover__sub">${esc(d.title.split("—")[1]?.trim() || "Revision Notes")} — John Steinbeck's novel, page by page from the exercise book.</p>
+        <div class="cover__author"><span class="tag">Notes by</span> <strong>${esc(d.author)}</strong></div>
+        <div class="cover__actions">
+          <a class="btn btn--primary" href="#/characters">Start with the characters</a>
+          <button type="button" class="btn btn--gold" data-action="quiz">Random quote quiz</button>
+          <button type="button" class="btn btn--ghost" data-action="search">Search <kbd>Ctrl/⌘ K</kbd></button>
         </div>
-        <div class="prediction-game-card__meta">${formatDate(match.date)} · ${match.time} UK</div>
       </div>
-      ${renderAdminPredictionGraph(match, stats)}
+      <svg class="cover__sun" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="34" fill="#F3D98C"/><circle cx="50" cy="50" r="26" fill="#D9A441"/></svg>
+      <svg class="cover__hills" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 150 C 150 60, 300 60, 450 140 S 750 230, 900 150 S 1100 60, 1200 110 V260 H0Z" fill="#E9C76A"/>
+        <path d="M0 190 C 200 120, 350 110, 520 180 S 820 250, 1000 180 S 1150 120, 1200 160 V260 H0Z" fill="#D9A441"/>
+        <path d="M0 225 C 180 190, 360 180, 540 215 S 860 260, 1040 220 S 1160 195, 1200 210 V260 H0Z" fill="#B8862B"/>
+        <path d="M0 250 C 200 236, 400 232, 600 246 S 1000 262, 1200 244 V260 H0Z" fill="#3E7A5A"/>
+        <path d="M0 256 C 240 248, 420 246, 640 254 S 980 262, 1200 252 V260 H0Z" fill="#2D5C44"/>
+      </svg>
+    </section>
+
+    <section class="sections">
+      <div class="grid">
+        ${cards.map((c) => `
+          <a class="card card--link card--c section-card hl-watch" href="${c.href}" style="--c:${c.c}">
+            <span class="section-card__num">${c.num}</span>
+            <h3>${c.title}</h3>
+            <p>${c.text}</p>
+            <span class="section-card__count">${c.count}</span>
+          </a>`).join("")}
+      </div>
+    </section>
+
+    <section class="card hl-watch">
+      <span class="eyebrow">How to read these notes</span>
+      <ul class="legend" style="margin-top:8px">
+        <li><mark class="hl">"double quotes"</mark> ${esc(d.conventions.quotes.replace("Text in double quotes is", "=").trim())}</li>
+        <li><span class="star">★</span> ${esc(d.conventions.context.replace("Items starting with ★ are", "=").trim())}</li>
+        <li><span class="pref" style="margin:0">Book p.X</span> ${esc(d.conventions.bookRef.replace("[p.X] =", "=").trim())}</li>
+        <li><span class="swatch"></span> notes in blue are ones you've added yourself</li>
+      </ul>
+      <p class="form__hint" style="margin-top:12px">${quoteCount} quotations across the notebook${mineCount ? ` · ${mineCount} note${mineCount === 1 ? "" : "s"} of your own` : ""}.</p>
+    </section>`;
+}
+
+// ---------- exam essentials ----------
+function renderExam() {
+  const d = state.data;
+  const aoColours = [COLOURS.george, COLOURS.curley, COLOURS.slim, COLOURS.lennie];
+  const ctx = state.index.filter((i) => i.isContext);
+  return `
+    <div class="page-head">
+      <div><span class="eyebrow">Section 01</span><h1>Exam essentials</h1></div>
+      <p class="lede">The four assessment objectives, and every ★ context point from the notebook gathered in one place.</p>
+    </div>
+    <div class="grid" style="margin-bottom:28px">
+      ${d.assessmentObjectives.map((ao, a) => `
+        <section class="card ao-card hl-watch" style="--c:${aoColours[a % aoColours.length]}">
+          <h3>${esc(ao.ao)}</h3>
+          <ul>${ao.points.map((p, i) => `<li id="ao-${attr(ao.ao)}-${i}" class="${/most examined|needed for all/i.test(p) ? "is-key" : ""}">${fmt(p)}</li>`).join("")}</ul>
+        </section>`).join("")}
+    </div>
+    <div class="page-head">
+      <div><span class="eyebrow">AO4</span><h2>Context at a glance</h2></div>
+      <p class="lede">Tap any point to jump to where it sits in the notes.</p>
+    </div>
+    <div class="context-list">
+      ${ctx.map((it) => `
+        <button type="button" class="card card--link context-item hl-watch" data-action="jump" data-route="${attr(it.route)}" data-id="${attr(it.id)}" style="--c:${it.colour || MINE}">
+          <span class="star">★</span>
+          <span>${fmt(it.text.replace(/^★\s*/, ""))}<span class="context-item__src">${it.mine ? '<span class="tag tag--mine">Mine</span> ' : ""}${esc(it.section)} · <b style="color:${it.mine ? MINE : it.colour}">${esc(it.group)}</b></span></span>
+        </button>`).join("")}
     </div>`;
 }
 
-function ensureAdminGraphsTab() {
-  const tabs = $(".app-tabs--admin");
-  const tools = $("#admin-tools");
-
-  if (!tabs || !tools || $('[data-admin-tab="graphs"]', tabs)) return;
-
-  const btn = document.createElement("button");
-
-  btn.className = "app-tab";
-  btn.type = "button";
-  btn.dataset.adminTab = "graphs";
-  btn.textContent = "Prediction graphs";
-
-  const setupTab = $('[data-admin-tab="setup"]', tabs);
-
-  tabs.insertBefore(btn, setupTab || null);
-
-  const panel = document.createElement("div");
-
-  panel.className = "admin-panel hidden";
-  panel.id = "admin-tab-graphs";
-  panel.innerHTML = `
-    <h3 class="panel-title">Prediction graphs</h3>
-    <p class="panel-sub">Read-only view of what players have predicted for each group game.</p>
-    <div id="admin-graphs"></div>`;
-
-  const resultsPanel = $("#admin-tab-results");
-
-  if (resultsPanel?.parentNode) {
-    resultsPanel.parentNode.insertBefore(panel, resultsPanel.nextSibling);
-  } else {
-    tools.appendChild(panel);
-  }
+// ---------- characters + settings indexes ----------
+function subjectCard(s) {
+  const n = s.nodes.length + userNotes(s.key).length;
+  return `
+    <a class="card card--link card--c char-card hl-watch ${s.mine ? "char-card--mine" : ""}" href="${s.route}" style="--c:${s.colour}">
+      <span class="char-card__name">${esc(s.name)}</span>
+      <p class="char-card__tag">${esc(s.tagline || "")}</p>
+      <span class="char-card__foot"><span>${n} point${n === 1 ? "" : "s"}</span>${s.bookPage ? bookRef(s.bookPage) : (s.mine ? '<span class="tag tag--mine">Mine</span>' : "")}</span>
+    </a>`;
 }
 
-async function renderAdminGraphs() {
-  ensureAdminPredictionGraphStyles();
+function myDiagramsSection() {
+  const mine = customDiagrams().map((g) => subjectFor("diagram", g.id)).filter(Boolean);
+  return `
+    <div class="page-head" style="margin-top:30px">
+      <div><span class="eyebrow">Yours</span><h2>My spider diagrams</h2></div>
+      <p class="lede">Start a blank diagram for anyone the notebook doesn't cover yet — Carlson, Whit, the barn…</p>
+    </div>
+    <div class="grid">
+      ${mine.map(subjectCard).join("")}
+      <button type="button" class="card char-card char-card--new" data-action="new-diagram"><span class="plus">+</span><span>New spider diagram</span></button>
+    </div>`;
+}
 
-  const root = $("#admin-graphs");
+function renderCharactersIndex() {
+  const d = state.data;
+  return `
+    <div class="page-head">
+      <div><span class="eyebrow">Section 02</span><h1>Characters</h1></div>
+      <p class="lede">One spider diagram per character. Open one to see every point drawn out from the hub — and add your own legs.</p>
+    </div>
+    <div class="grid">${d.characters.map((c) => subjectCard(subjectFor("characters", c.id))).join("")}</div>
+    ${myDiagramsSection()}`;
+}
 
-  if (!root) return;
+function renderSettingsIndex() {
+  const d = state.data;
+  return `
+    <div class="page-head">
+      <div><span class="eyebrow">Section 03</span><h1>Settings</h1></div>
+      <p class="lede">Where the novel happens — and how Steinbeck sets the two worlds against each other.</p>
+    </div>
+    <div class="grid">${d.settings.map((s) => subjectCard(subjectFor("settings", s.id))).join("")}</div>
+    ${myDiagramsSection()}`;
+}
 
-  root.innerHTML = `<div style="opacity:.6">Loading…</div>`;
+// ---------- spider diagram page ----------
+function mineControls(target, id, kind) {
+  return `
+    <span class="tag tag--mine">Mine</span><span>${esc(KINDS[kind] || "Point")}</span><span class="spacer"></span>
+    <button type="button" class="icon-btn" data-action="edit-note" data-target="${attr(target)}" data-id="${attr(id)}" aria-label="Edit this note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14.5V17h2.5L15 7.5 12.5 5zM13.8 3.7l2.5 2.5 1.2-1.2a1 1 0 0 0 0-1.4L16.4 2.5a1 1 0 0 0-1.4 0z" fill="currentColor"/></svg></button>
+    <button type="button" class="icon-btn icon-btn--danger" data-action="delete-note" data-target="${attr(target)}" data-id="${attr(id)}" aria-label="Delete this note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h10l-.8 11H5.8zM8 3h4l.5 2h-5zM3 5h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg></button>`;
+}
 
-  const predictions = await fetchAllPredictions();
-  const predictionStats = buildGroupPredictionStats(predictions);
-  const groupKeys = Object.keys(GROUPS);
+function addButton(target, label = "Add a note, quote or point") {
+  return `<div class="mine-area" data-mine-area="${attr(target)}"><button type="button" class="add-btn" data-action="add-note" data-target="${attr(target)}"><span class="plus">+</span>${esc(label)}</button></div>`;
+}
 
-  root.innerHTML = groupKeys.map((group) => {
-    const matches = GROUP_MATCHES.filter((m) => m.group === group);
+function renderSpiderPage(s) {
+  const d = state.data;
+  const siblings = s.kind === "settings"
+    ? d.settings.map((x) => subjectFor("settings", x.id))
+    : [...d.characters.map((x) => subjectFor("characters", x.id)), ...customDiagrams().map((g) => subjectFor("diagram", g.id))];
+  const backHref = s.kind === "settings" ? "#/settings" : "#/characters";
+  const backLabel = s.kind === "settings" ? "Settings" : "Characters";
+  const mine = userNotes(s.key);
+  const total = s.nodes.length + mine.length;
 
-    return `
-      <section class="admin-graphs-group">
-        <h4 class="admin-graphs-group__title">Group ${group}</h4>
-        <div class="admin-graphs-grid">
-          ${matches.map((match) => renderAdminGraphCard(match, predictionStats[match.id])).join("")}
+  const nodeHtml = (i, inner, extra = "", id = "") => `
+    <div class="node hl-watch ${extra}" id="${id}" style="--i:${i}" data-i="${i}" data-side="${i % 2 === 0 ? "left" : "right"}">${inner}</div>`;
+
+  const items = [
+    ...s.nodes.map((t, i) => nodeHtml(i, fmt(t), isContext(t) ? "node--ctx" : "", `n-${s.key}-${i}`)),
+    ...mine.map((n, j) => nodeHtml(s.nodes.length + j,
+      `<div class="node__body">${fmt(n.text, { kind: n.kind })}</div><div class="node__mine-row">${mineControls(s.key, n.id, n.kind)}</div>`,
+      "node--mine", `u-${n.id}`)),
+  ];
+  const left = items.filter((_, i) => i % 2 === 0).join("");
+  const right = items.filter((_, i) => i % 2 === 1).join("");
+
+  return `
+    <div class="page-head">
+      <div><a class="eyebrow" href="${backHref}">← ${backLabel}</a><h1 style="color:${s.colour}">${esc(s.name)}</h1></div>
+      <div class="page-actions">
+        ${s.mine ? `<button type="button" class="btn btn--ghost btn--small" data-action="delete-diagram" data-id="${attr(s.id)}">Delete diagram</button>` : ""}
+        <button type="button" class="btn btn--ghost btn--small" data-action="print">Print</button>
+      </div>
+      <p class="lede">${esc(s.tagline || "")}${total ? ` <span class="form__hint" style="display:inline">· ${total} point${total === 1 ? "" : "s"}</span>` : ""}</p>
+    </div>
+    <nav class="subnav" aria-label="Other ${backLabel.toLowerCase()}">
+      ${siblings.map((x) => `<a class="chip chip--c ${x.key === s.key ? "is-active" : ""}" href="${x.route}" style="--c:${x.colour}">${esc(x.name)}</a>`).join("")}
+    </nav>
+    <section class="spider ${s.mine ? "spider--mine" : ""}" style="--c:${s.colour}" data-key="${attr(s.key)}">
+      <div class="spider__canvas">
+        <svg class="spider__legs" aria-hidden="true"></svg>
+        <div class="spider__col spider__col--left">${left}</div>
+        <div class="spider__hub">
+          <h2>${esc(s.name)}</h2>
+          ${s.tagline ? `<p>${esc(s.tagline)}</p>` : ""}
+          ${s.bookPage ? bookRef(s.bookPage) : (s.mine ? '<span class="tag tag--mine">My diagram</span>' : "")}
         </div>
+        <div class="spider__col spider__col--right">${right}</div>
+      </div>
+      ${total === 0 ? `<p class="form__hint" style="text-align:center;margin-top:16px">This diagram is empty — add your first leg below.</p>` : ""}
+      <div class="spider__add">${addButton(s.key, "Add a leg: note, quote or context")}</div>
+    </section>`;
+}
+
+// ---------- incidents ----------
+function renderIncidents() {
+  const d = state.data;
+  return `
+    <div class="page-head">
+      <div><span class="eyebrow">Section 04</span><h1>Incidents</h1></div>
+      <p class="lede">The key moments in order: what happens, what the notebook says about it, and the paragraphs written on it.</p>
+    </div>
+    <div class="timeline">
+      ${d.incidents.map((inc) => {
+        const mine = userNotes(`incident_${inc.id}`);
+        return `
+        <article class="card incident hl-watch" id="inc-${attr(inc.id)}" style="--c:${COLOURS.curley}">
+          <span class="incident__chapter">${esc(inc.chapter)}</span>
+          <h2>${esc(inc.title)}</h2>
+          <p class="incident__what" id="inc-${attr(inc.id)}-what">${fmt(inc.what)}</p>
+          <ul class="notes-list">
+            ${(inc.notes || []).map((t, i) => `<li id="inc-${attr(inc.id)}-n${i}" class="${isContext(t) ? "is-ctx" : ""}">${fmt(t)}</li>`).join("")}
+            ${mine.map((n) => `<li id="u-${attr(n.id)}" class="is-mine">${fmt(n.text, { kind: n.kind })}<div class="mine-row">${mineControls(`incident_${inc.id}`, n.id, n.kind)}</div></li>`).join("")}
+          </ul>
+          ${inc.para ? `
+            <div class="para-block hl-watch" id="inc-${attr(inc.id)}-para">
+              <span class="eyebrow">Paragraph</span>
+              <h3>${esc(inc.para_title)} ${bookRef(inc.para_page)}</h3>
+              <p class="para-text">${fmt(inc.para)}</p>
+            </div>` : ""}
+          ${addButton(`incident_${inc.id}`)}
+        </article>`;
+      }).join("")}
+    </div>`;
+}
+
+// ---------- notes & quotes ----------
+function renderNotes() {
+  const d = state.data;
+  const pageCard = (id, title, meta, items, target) => {
+    const mine = userNotes(target);
+    return `
+      <section class="card notes-page hl-watch" id="${attr(id)}">
+        <div class="card__title"><h2>${title}</h2>${meta}</div>
+        <ul class="notes-list">
+          ${items}
+          ${mine.map((n) => `<li id="u-${attr(n.id)}" class="is-mine">${fmt(n.text, { kind: n.kind })}<div class="mine-row">${mineControls(target, n.id, n.kind)}</div></li>`).join("")}
+        </ul>
+        ${addButton(target)}
       </section>`;
-  }).join("");
+  };
+  return `
+    <div class="page-head">
+      <div><span class="eyebrow">Section 05</span><h1>Notes &amp; Quotes</h1></div>
+      <p class="lede">The notebook pages as written — quotations highlighted, ★ for context.</p>
+    </div>
+    <div class="timeline">
+      ${d.notesAndQuotes.map((pg) => pageCard(`nq-${pg.page}`, esc(pg.title), bookRef(pg.page),
+        pg.items.map((t, i) => `<li id="nq-${attr(pg.page)}-${i}" class="${isContext(t) ? "is-ctx" : ""}">${fmt(t)}</li>`).join(""),
+        `notes_${pg.page}`)).join("")}
+      ${pageCard("nq-mine", "My own notes", '<span class="tag tag--mine">Mine</span>', "", "notes_mine")}
+    </div>`;
 }
 
-async function renderAdminResults() {
-  const root = $("#admin-results");
-  const results = await fetchResults();
+// ---------- paragraphs ----------
+function renderParagraphs() {
+  const d = state.data;
+  return `
+    <div class="page-head">
+      <div><span class="eyebrow">Section 06</span><h1>Paragraphs</h1></div>
+      <p class="lede">Practice paragraphs from the exercise book, with the feedback they got.</p>
+    </div>
+    <div class="timeline">
+      ${d.paragraphs.map((p) => {
+        const mine = userNotes(`para_${p.id}`);
+        const fb = p.feedback;
+        return `
+        <article class="card para-card hl-watch" id="para-${attr(p.id)}" style="--c:${COLOURS.george}">
+          <div class="card__title"><h2>${esc(p.title)}</h2>${bookRef(p.page)}${p.task ? `<span class="tag">${esc(p.task)}</span>` : ""}</div>
+          <p class="para-text" id="para-${attr(p.id)}-text">${fmt(p.text)}</p>
+          ${fb ? `
+            <div class="feedback" id="para-${attr(p.id)}-fb">
+              ${fb.mark ? `<span class="feedback__mark">${esc(fb.mark)}</span>` : ""}
+              <span class="eyebrow">Teacher feedback</span>
+              ${fb.comment ? `<p>${fmt(fb.comment)}</p>` : ""}
+              ${fb.target ? `<p><strong>Target:</strong> ${fmt(fb.target)}</p>` : ""}
+            </div>` : ""}
+          ${mine.length ? `<ul class="notes-list" style="margin-top:12px">${mine.map((n) => `<li id="u-${attr(n.id)}" class="is-mine">${fmt(n.text, { kind: n.kind })}<div class="mine-row">${mineControls(`para_${p.id}`, n.id, n.kind)}</div></li>`).join("")}</ul>` : ""}
+          ${addButton(`para_${p.id}`)}
+        </article>`;
+      }).join("")}
+    </div>`;
+}
 
-  results.groups = results.groups || {};
+// -----------------------------------------------------------------
+// After render: spider layout, highlighter swipes
+// -----------------------------------------------------------------
+const spiders = new Map(); // section -> { ro, timer }
 
-  const groupRows = GROUP_MATCHES.map((m) => {
-    const r = results.groups[m.id] || {};
-    const sh = r.scoreHome ?? "";
-    const sa = r.scoreAway ?? "";
-    const w = r.winner || "";
+function afterRender(animate) {
+  spiders.forEach((v) => { v.ro.disconnect(); clearTimeout(v.timer); });
+  spiders.clear();
 
-    const btn = (val, lab) => `
-      <button type="button" class="outcome-btn ${w === val ? "is-selected" : ""}" data-result-pick="${val}" data-match="${m.id}">${lab}</button>`;
+  $$(".spider").forEach((section) => setupSpider(section, animate && !reduced()));
 
-    return `
-      <div class="result-row" data-result-match="${m.id}">
-        <div class="result-row__num">${m.id}</div>
-        <div class="result-row__teams">
-          <img class="team-flag" src="${flagUrl(TEAMS[m.home].iso)}" alt="" />
-          ${m.home} v ${m.away}
-          <img class="team-flag" src="${flagUrl(TEAMS[m.away].iso)}" alt="" />
-        </div>
-        <div class="result-row__inputs">
-          <input class="score-input" data-result-side="home" data-match="${m.id}" type="number" min="0" value="${sh}" />
-          <span class="score-dash">—</span>
-          <input class="score-input" data-result-side="away" data-match="${m.id}" type="number" min="0" value="${sa}" />
-        </div>
-        <div class="result-row__outcome">
-          ${btn("HOME", "H")}${btn("DRAW", "D")}${btn("AWAY", "A")}
-        </div>
-      </div>`;
-  }).join("");
+  const watched = $$(".hl-watch");
+  if (reduced() || !("IntersectionObserver" in window)) { watched.forEach((el) => el.classList.add("is-in")); return; }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      const el = e.target;
+      io.unobserve(el);
+      const spider = el.closest(".spider.is-drawing");
+      const delay = spider && el.classList.contains("node") ? Number(el.dataset.i || 0) * 55 + 420 : 60;
+      setTimeout(() => el.classList.add("is-in"), delay);
+    });
+  }, { threshold: 0.15, rootMargin: "0px 0px -5% 0px" });
+  watched.forEach((el) => io.observe(el));
+}
 
-  root.innerHTML = `
-    <h4 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;color:var(--ink-mute);margin:24px 0 8px;text-transform:uppercase">Group stage results</h4>
-    ${groupRows}
-    <h4 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;color:var(--ink-mute);margin:32px 0 8px;text-transform:uppercase">Knockout results — enter the real scores</h4>
-    <p class="panel-sub" style="margin-bottom:14px">Type the actual score of each match; winners advance automatically and players are scored against this. The Final winner is the champion; the play-off winner takes 3rd.</p>
-    <div id="admin-ko" class="kb-bracket"></div>`;
+function setupSpider(section, animate) {
+  const nodes = $$(".node", section);
+  if (animate) section.classList.add("is-drawing");
+  layoutSpider(section, true);
 
-  // ---- group results wiring ----
-  const adminGroupsDirty = {};
+  const ro = new ResizeObserver(() => layoutSpider(section, false));
+  ro.observe($(".spider__canvas", section));
+  const timer = setTimeout(() => {
+    section.classList.remove("is-drawing");
+    layoutSpider(section, false);
+  }, animate ? 260 + nodes.length * 55 + 650 : 0);
+  spiders.set(section, { ro, timer });
+}
 
-  const saveGroupsDebounced = debounce(async () => {
-    const merged = await fetchResults();
-    merged.groups = { ...(merged.groups || {}), ...adminGroupsDirty };
-    await saveResults(merged);
-    renderAdminLeaderboard();
-  }, 600);
+function layoutSpider(section, build) {
+  const canvas = $(".spider__canvas", section);
+  const svg = $(".spider__legs", section);
+  const hub = $(".spider__hub", section);
+  const nodes = $$(".node", section);
+  const narrow = NARROW.matches;
 
-  $$(".result-row .outcome-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const mid = btn.dataset.match;
-      $$(`.result-row[data-result-match="${mid}"] .outcome-btn`).forEach((b) => b.classList.remove("is-selected"));
-      btn.classList.add("is-selected");
-      adminGroupsDirty[mid] = {
-        ...(adminGroupsDirty[mid] || results.groups[mid] || {}),
-        winner: btn.dataset.resultPick,
-      };
-      saveGroupsDebounced();
+  ["left", "right"].forEach((side) => {
+    const col = nodes.filter((n) => n.dataset.side === side);
+    const mid = (col.length - 1) / 2;
+    col.forEach((el, j) => {
+      const t = col.length > 1 ? (j - mid) / mid : 0;
+      const dx = narrow ? 0 : Math.round(ARC * (1 - Math.sqrt(Math.max(0, 1 - t * t))));
+      el.style.setProperty("--dx", `${side === "left" ? dx : -dx}px`);
     });
   });
 
-  $$(".result-row .score-input").forEach((input) => {
-    input.addEventListener("input", () => {
-      const mid = input.dataset.match;
-      const side = input.dataset.resultSide === "home" ? "scoreHome" : "scoreAway";
-      const val = input.value === "" ? null : parseInt(input.value, 10) || 0;
-      adminGroupsDirty[mid] = { ...(adminGroupsDirty[mid] || results.groups[mid] || {}), [side]: val };
+  if (narrow) { svg.innerHTML = ""; svg.dataset.count = "0"; return; }
 
-      const p = adminGroupsDirty[mid];
-      if (typeof p.scoreHome === "number" && typeof p.scoreAway === "number") {
-        p.winner = p.scoreHome > p.scoreAway ? "HOME" : p.scoreHome < p.scoreAway ? "AWAY" : "DRAW";
-        $$(`.result-row[data-result-match="${mid}"] .outcome-btn`).forEach((b) => {
-          b.classList.toggle("is-selected", b.dataset.resultPick === p.winner);
-        });
-      }
-      saveGroupsDebounced();
-    });
-  });
+  const cr = canvas.getBoundingClientRect();
+  const hr = hub.getBoundingClientRect();
+  svg.setAttribute("viewBox", `0 0 ${Math.max(1, cr.width)} ${Math.max(1, cr.height)}`);
+  const hx = hr.left - cr.left, hy = hr.top - cr.top + hr.height / 2, hw = hr.width;
 
-  // ---- knockout results wiring (same bracket, admin mode, never locked) ----
-  const koAdmin = results.ko ? { ...results.ko } : {};
-  const saveKoDebounced = debounce(async () => {
-    await saveKoResults(koAdmin);
-    renderAdminLeaderboard();
-  }, 600);
+  if (svg.dataset.count !== String(nodes.length)) {
+    svg.innerHTML = nodes.map((el, i) => {
+      const mine = el.classList.contains("node--mine");
+      return `<path style="--i:${i}" class="${mine ? "leg--mine" : ""}" d="M0,0"/><circle r="3.5" style="--i:${i}" class="${mine ? "dot--mine" : ""}"/>`;
+    }).join("");
+    svg.dataset.count = String(nodes.length);
+  }
+  const paths = $$("path", svg), dots = $$("circle", svg);
 
-  paintKoBracket($("#admin-ko"), {
-    ko: koAdmin,
-    isLocked: () => false,
-    onSave: () => saveKoDebounced(),
+  nodes.forEach((el, i) => {
+    const r = el.getBoundingClientRect();
+    const left = el.dataset.side === "left";
+    const ax = (left ? r.right : r.left) - cr.left;
+    const ay = r.top - cr.top + r.height / 2;
+    const sx = left ? hx + 6 : hx + hw - 6;
+    const sy = hy + Math.max(-hr.height * 0.32, Math.min(hr.height * 0.32, (ay - hy) * 0.3));
+    const c1 = sx + (ax - sx) * 0.42, c2 = ax - (ax - sx) * 0.42;
+    const p = paths[i], dot = dots[i];
+    if (!p) return;
+    p.setAttribute("d", `M${sx.toFixed(1)},${sy.toFixed(1)} C${c1.toFixed(1)},${sy.toFixed(1)} ${c2.toFixed(1)},${ay.toFixed(1)} ${ax.toFixed(1)},${ay.toFixed(1)}`);
+    if (build || !p.style.getPropertyValue("--len")) p.style.setProperty("--len", p.getTotalLength().toFixed(1));
+    dot.setAttribute("cx", ax.toFixed(1));
+    dot.setAttribute("cy", ay.toFixed(1));
   });
 }
 
-async function renderAdminCodes() {
-  const root = $("#admin-codes");
+// -----------------------------------------------------------------
+// Adding / editing your own notes
+// -----------------------------------------------------------------
+function closeNoteForm() {
+  const form = $(".note-form");
+  if (!form) return;
+  const hidden = form.previousElementSibling;
+  if (hidden && hidden.dataset.hiddenForEdit) { hidden.hidden = false; delete hidden.dataset.hiddenForEdit; }
+  const area = form.closest("[data-mine-area]");
+  form.remove();
+  if (area) { const b = $(".add-btn", area); if (b) b.hidden = false; }
+  if (state.dirty) { state.dirty = false; onNotesChanged(); }
+}
 
-  root.innerHTML = `<div style="opacity:.6">Loading…</div>`;
+function openNoteForm(target, id = null) {
+  closeNoteForm();
+  const existing = id ? (state.notes[target] || {})[id] : null;
+  const form = document.createElement("form");
+  form.className = "note-form";
+  form.noValidate = true;
+  const kind = existing?.kind || "point";
+  form.innerHTML = `
+    <label class="field"><span>${existing ? "Edit your note" : "Your note"}</span>
+      <textarea name="text" required placeholder='Write it how you'd write it in the book — put novel quotations in "double quotes" and use [p.12] for a book page'>${esc(existing?.text || "")}</textarea></label>
+    <div class="kind-picker" role="radiogroup" aria-label="Kind of note">
+      ${Object.entries(KINDS).map(([k, label]) => `<label><input type="radio" name="kind" value="${k}" ${k === kind ? "checked" : ""}>${k === "quote" ? "“ ” " : k === "context" ? "★ " : "✎ "}${label}</label>`).join("")}
+    </div>
+    <p class="form__hint">Saved online to your notes database, so it shows up on every device.</p>
+    <div class="form__actions">
+      <button type="button" class="btn btn--ghost btn--small" data-cancel>Cancel</button>
+      <button type="submit" class="btn btn--mine btn--small">${existing ? "Save changes" : "Add note"}</button>
+    </div>`;
 
-  const codes = await fetchAllCodes();
+  if (existing) {
+    const el = document.getElementById(`u-${id}`);
+    if (el) { el.hidden = true; el.dataset.hiddenForEdit = "1"; el.after(form); }
+  }
+  if (!form.isConnected) {
+    const area = $(`[data-mine-area="${CSS.escape(target)}"]`);
+    if (!area) return;
+    $(".add-btn", area).hidden = true;
+    area.appendChild(form);
+  }
 
-  if (!codes.length) {
-    root.innerHTML = `<p style="color:var(--ink-soft)">No codes seeded yet. Use the <strong>Setup</strong> tab to create some.</p>`;
+  $("[data-cancel]", form).addEventListener("click", closeNoteForm);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = form.text.value.trim();
+    const k = form.kind.value;
+    if (!text) { form.text.focus(); return; }
+    const btn = $('[type="submit"]', form);
+    btn.disabled = true;
+    try {
+      if (existing) await store.saveNote(target, id, { text, kind: k, updatedAt: Date.now() });
+      else await store.saveNote(target, store.newId(), { text, kind: k, createdAt: Date.now() });
+      toast(existing ? "Note updated" : "Note added");
+      state.dirty = true;
+      closeNoteForm();
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      toast("Couldn't save that — try again");
+    }
+  });
+  const ta = $("textarea", form);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  form.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
+}
+
+async function deleteNote(target, id) {
+  if (!confirm("Delete this note? This can't be undone.")) return;
+  try { await store.deleteNote(target, id); toast("Note deleted"); onNotesChanged(); }
+  catch (err) { console.error(err); toast("Couldn't delete that — try again"); }
+}
+
+// ---------- new spider diagram ----------
+function openDiagramModal() {
+  const form = $("#diagram-form");
+  form.reset();
+  $("#diagram-swatches").innerHTML = SWATCHES.map((c, i) => `<label style="--sw:${c}" title="${c}"><input type="radio" name="colour" value="${c}" ${i === 0 ? "checked" : ""}></label>`).join("");
+  openOverlay("#diagram-modal");
+  form.name.focus();
+}
+
+async function createDiagram(form) {
+  const name = form.name.value.trim();
+  if (!name) { form.name.focus(); return; }
+  const id = store.newId();
+  const diagram = { name, tagline: form.tagline.value.trim(), bookPage: form.bookPage.value.trim(), colour: safeColour(form.colour.value), createdAt: Date.now() };
+  try {
+    await store.saveDiagram(id, diagram);
+    closeOverlays();
+    toast(`${name} added — now give it some legs`);
+    location.hash = `#/diagram/${id}`;
+  } catch (err) { console.error(err); toast("Couldn't create that diagram — try again"); }
+}
+
+async function deleteDiagram(id) {
+  const g = state.diagrams[id];
+  if (!g) return;
+  if (!confirm(`Delete the "${g.name}" diagram and every note on it?`)) return;
+  try { await store.deleteDiagram(id); toast("Diagram deleted"); location.hash = "#/characters"; }
+  catch (err) { console.error(err); toast("Couldn't delete that — try again"); }
+}
+
+// -----------------------------------------------------------------
+// Overlays
+// -----------------------------------------------------------------
+let lastFocus = null;
+function openOverlay(sel) {
+  closeOverlays();
+  lastFocus = document.activeElement;
+  $(sel).hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeOverlays() {
+  let any = false;
+  $$(".overlay").forEach((o) => { if (!o.hidden) { o.hidden = true; any = true; } });
+  document.body.style.overflow = "";
+  if (any && lastFocus && lastFocus.focus) lastFocus.focus();
+}
+
+// -----------------------------------------------------------------
+// Search
+// -----------------------------------------------------------------
+function openSearch() {
+  openOverlay("#search");
+  const input = $("#search-input");
+  input.value = "";
+  input.focus();
+  runSearch();
+}
+
+function matchRanges(text, terms) {
+  const lc = text.toLowerCase();
+  const ranges = [];
+  terms.forEach((t) => { let from = 0; while (t) { const at = lc.indexOf(t, from); if (at < 0) break; ranges.push([at, at + t.length]); from = at + t.length; } });
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  ranges.forEach((r) => { const last = merged[merged.length - 1]; if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]); else merged.push(r.slice()); });
+  return merged;
+}
+
+function highlightMatches(text, terms) {
+  const ranges = matchRanges(text, terms);
+  if (!ranges.length) return esc(text);
+  let out = "", pos = 0;
+  ranges.forEach(([a, b]) => { out += esc(text.slice(pos, a)) + `<mark class="match">${esc(text.slice(a, b))}</mark>`; pos = b; });
+  return out + esc(text.slice(pos));
+}
+
+function snippet(text, terms, max = 180) {
+  if (text.length <= max) return text;
+  const r = matchRanges(text, terms)[0];
+  if (!r) return text.slice(0, max - 1) + "…";
+  const start = Math.max(0, r[0] - 60);
+  const end = Math.min(text.length, start + max);
+  return (start ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+}
+
+function runSearch() {
+  const q = $("#search-input").value.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(Boolean);
+  const box = $("#search-results");
+  const count = $("#search-count");
+  const f = state.filter;
+
+  if (!terms.length && f === "all") {
+    box.innerHTML = `<div class="search__empty">Type to search every character node, incident, note, quote and paragraph — including the ones you've added.<br><small>Tip: switch to <b>Quotes only</b> or <b>Context only</b> to browse.</small></div>`;
+    count.textContent = "";
     return;
   }
 
-  codes.sort((a, b) => a.code.localeCompare(b.code));
+  const hits = state.index.filter((it) =>
+    (f === "all" || (f === "quotes" && it.isQuote) || (f === "context" && it.isContext)) &&
+    terms.every((t) => it.lc.includes(t)));
 
-  const claimed = codes.filter((c) => c.claimed).length;
-  const unclaimed = codes.length - claimed;
+  count.textContent = hits.length ? `${hits.length} result${hits.length === 1 ? "" : "s"}` : "No results";
+  if (!hits.length) { box.innerHTML = `<div class="search__empty">Nothing matches “${esc(q)}”${f !== "all" ? " with that filter" : ""}.</div>`; return; }
 
-  root.innerHTML = `
-    <p style="color:var(--ink-soft)"><strong>${codes.length}</strong> codes · <strong>${claimed}</strong> claimed · <strong>${unclaimed}</strong> unclaimed.</p>
-    <div class="admin-codes-grid">
-      ${codes.map((c) => `
-        <div class="code-chip ${c.claimed ? "is-claimed" : ""}">
-          ${c.code}
-          <span class="code-chip__name">${c.claimed ? escapeHtml(c.name || "—") : "free"}</span>
-        </div>`).join("")}
+  const order = ["Exam essentials", "Characters", "Settings", "My diagrams", "Incidents", "Notes & Quotes", "Paragraphs"];
+  const groups = new Map();
+  hits.forEach((it) => { if (!groups.has(it.section)) groups.set(it.section, []); groups.get(it.section).push(it); });
+
+  box.innerHTML = order.filter((s) => groups.has(s)).map((s) => `
+    <div class="search__group">${esc(s)} <span style="opacity:.6">· ${groups.get(s).length}</span></div>
+    ${groups.get(s).map((it) => `
+      <button type="button" class="result ${it.mine ? "is-mine" : ""}" data-route="${attr(it.route)}" data-id="${attr(it.id)}" style="--c:${it.colour || MINE}">
+        <span class="result__where">${it.mine ? '<span class="tag tag--mine">Mine</span> ' : ""}<b>${esc(it.group)}</b>${it.isContext ? ' · <span class="star">★</span> context' : ""}${it.isQuote ? " · quotation" : ""}</span>
+        ${highlightMatches(snippet(it.text, terms), terms)}
+      </button>`).join("")}`).join("");
+}
+
+function pickResult(btn) {
+  const route = btn.dataset.route, id = btn.dataset.id;
+  closeOverlays();
+  goTo(route, id);
+}
+
+function goTo(route, id) {
+  const target = parseRoute.call(null);
+  const want = route.replace(/^#\/?/, "");
+  const here = location.hash.replace(/^#\/?/, "");
+  const samePage = here.split("/")[0] === want.split("/")[0] && (here === want || ["incidents", "notes", "paragraphs"].includes(want.split("/")[0]));
+  if (samePage && document.getElementById(id)) { jumpTo(id); return; }
+  state.pendingJump = id;
+  if (location.hash === route) navigate(); else location.hash = route;
+  void target;
+}
+
+// -----------------------------------------------------------------
+// Random quote quiz
+// -----------------------------------------------------------------
+function quizPool() {
+  return state.index.filter((it) => it.isQuote && ["Characters", "Settings", "My diagrams", "Incidents"].includes(it.section) && !it.id.endsWith("-para"));
+}
+
+function openQuiz() {
+  state.quiz = { score: 0, asked: 0, item: null, done: false };
+  openOverlay("#quiz");
+  nextQuestion();
+}
+
+function nextQuestion() {
+  const pool = quizPool();
+  const body = $("#quiz-body");
+  $("#quiz-score").textContent = state.quiz.asked ? `${state.quiz.score} / ${state.quiz.asked}` : "";
+  if (!pool.length) { body.innerHTML = `<p>No quotations to quiz on yet.</p>`; return; }
+  let item = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1 && state.quiz.item && item.id === state.quiz.item.id) item = pool[(pool.indexOf(item) + 1) % pool.length];
+  state.quiz.item = item;
+  state.quiz.done = false;
+
+  const answer = item.group;
+  const subjects = [...new Set(pool.map((p) => p.group))].filter((g) => g !== answer);
+  const options = shuffle([answer, ...shuffle(subjects).slice(0, 3)]);
+  const q = firstQuote(item.text);
+
+  body.innerHTML = `
+    <span class="eyebrow">${esc(item.section)}</span>
+    <p class="quiz__quote"><mark class="hl is-on">“${esc(q)}”</mark></p>
+    <p class="quiz__q">Who, or what, is this quotation about?</p>
+    <div class="quiz__options">${options.map((o) => `<button type="button" class="quiz__opt" data-answer="${attr(o)}">${esc(o)}</button>`).join("")}</div>
+    <div id="quiz-reveal"></div>
+    <div class="quiz__actions">
+      <button type="button" class="btn btn--ghost btn--small" data-quiz="reveal">Not sure — show me</button>
     </div>`;
 }
 
-async function seedCodes() {
-  const out = $("#seed-output");
+function answerQuiz(choice) {
+  const { item } = state.quiz;
+  if (!item || state.quiz.done) return;
+  state.quiz.done = true;
+  state.quiz.asked += 1;
+  const right = choice === item.group;
+  if (right) state.quiz.score += 1;
+  $$(".quiz__opt").forEach((b) => {
+    b.disabled = true;
+    if (b.dataset.answer === item.group) b.classList.add("is-right");
+    else if (b.dataset.answer === choice) b.classList.add("is-wrong");
+  });
+  $("#quiz-score").textContent = `${state.quiz.score} / ${state.quiz.asked}`;
+  $("#quiz-reveal").innerHTML = `
+    <div class="quiz__reveal" style="--c:${item.colour || MINE}">
+      <span class="eyebrow">${choice === null ? "Answer" : right ? "Correct" : "Not quite"} — ${esc(item.group)}</span>
+      <p><strong>What it shows:</strong> ${fmt(item.text, { kind: item.kind })}</p>
+    </div>`;
+  $(".quiz__actions").innerHTML = `
+    <button type="button" class="btn btn--primary btn--small" data-quiz="next">Next quote →</button>
+    <button type="button" class="btn btn--ghost btn--small" data-quiz="go" data-route="${attr(item.route)}" data-id="${attr(item.id)}">Open this note</button>`;
+  $('[data-quiz="next"]').focus();
+}
 
-  out.textContent = "Generating 100 codes…\n";
+// -----------------------------------------------------------------
+// Wiring
+// -----------------------------------------------------------------
+function wireChrome() {
+  $("#btn-search").addEventListener("click", openSearch);
+  $("#btn-quiz").addEventListener("click", openQuiz);
+  $("#btn-print").addEventListener("click", () => window.print());
 
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const codes = new Set();
+  // overlay close buttons / backdrops
+  $$(".overlay").forEach((o) => o.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeOverlays(); }));
 
-  while (codes.size < 100) {
-    let c = "";
-
-    for (let i = 0; i < 6; i++) {
-      c += chars[Math.floor(Math.random() * chars.length)];
+  // search
+  const input = $("#search-input");
+  let t;
+  input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(runSearch, 40); });
+  $$(".search__filters .chip").forEach((chip) => chip.addEventListener("click", () => {
+    state.filter = chip.dataset.filter;
+    $$(".search__filters .chip").forEach((c) => c.classList.toggle("is-active", c === chip));
+    runSearch();
+    input.focus();
+  }));
+  $("#search-results").addEventListener("click", (e) => { const b = e.target.closest(".result"); if (b) pickResult(b); });
+  $("#search").addEventListener("keydown", (e) => {
+    const results = $$(".result");
+    if (!results.length) return;
+    const i = results.findIndex((r) => r.classList.contains("is-focused"));
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const n = e.key === "ArrowDown" ? Math.min(results.length - 1, i + 1) : Math.max(0, i - 1);
+      results.forEach((r, j) => r.classList.toggle("is-focused", j === n));
+      results[n].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && document.activeElement === input) {
+      e.preventDefault();
+      pickResult(results[Math.max(0, i)]);
     }
-
-    codes.add(c);
-  }
-
-  const list = [...codes].sort();
-
-  out.textContent += "Writing to database…\n";
-
-  const codeMap = {};
-
-  list.forEach((code) => {
-    codeMap[code] = {
-      claimed: false,
-      createdAt: serverTimestamp(),
-    };
   });
 
+  // quiz
+  $("#quiz-body").addEventListener("click", (e) => {
+    const opt = e.target.closest(".quiz__opt");
+    if (opt) { answerQuiz(opt.dataset.answer); return; }
+    const b = e.target.closest("[data-quiz]");
+    if (!b) return;
+    if (b.dataset.quiz === "reveal") answerQuiz(null);
+    else if (b.dataset.quiz === "next") nextQuestion();
+    else if (b.dataset.quiz === "go") { closeOverlays(); goTo(b.dataset.route, b.dataset.id); }
+  });
+
+  // new diagram
+  $("#diagram-form").addEventListener("submit", (e) => { e.preventDefault(); createDiagram(e.currentTarget); });
+
+  // in-view actions
+  $("#view").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-action]");
+    if (!b) return;
+    const a = b.dataset.action;
+    if (a === "add-note") openNoteForm(b.dataset.target);
+    else if (a === "edit-note") openNoteForm(b.dataset.target, b.dataset.id);
+    else if (a === "delete-note") deleteNote(b.dataset.target, b.dataset.id);
+    else if (a === "new-diagram") openDiagramModal();
+    else if (a === "delete-diagram") deleteDiagram(b.dataset.id);
+    else if (a === "quiz") openQuiz();
+    else if (a === "search") openSearch();
+    else if (a === "print") window.print();
+    else if (a === "jump") goTo(b.dataset.route, b.dataset.id);
+  });
+
+  // keyboard
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); if ($("#search").hidden) openSearch(); else closeOverlays(); return; }
+    if (e.key === "Escape") { if ($$(".overlay").some((o) => !o.hidden)) { closeOverlays(); } else if ($(".note-form")) { closeNoteForm(); } }
+  });
+
+  NARROW.addEventListener?.("change", () => $$(".spider").forEach((s) => layoutSpider(s, false)));
+  REDUCED_MOTION.addEventListener?.("change", () => render({ animate: false }));
+  window.addEventListener("hashchange", navigate);
+}
+
+async function init() {
+  wireChrome();
+  store.init();
   try {
-    await set(ref(db, "codes"), codeMap);
-
-    out.textContent += `\n✓ Seeded ${list.length} codes. Distribute these (copy and save them somewhere safe — they're shown here just this once in plain form):\n\n${list.join("\n")}\n`;
-  } catch (e) {
-    out.textContent += `\n✗ Failed: ${e.message}`;
-    console.error(e);
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.data = await res.json();
+  } catch (err) {
+    console.error(err);
+    $("#view").innerHTML = `<div class="page-head"><h1>Couldn't open the notes</h1></div><p>The notes file <code>${DATA_URL}</code> didn't load (${esc(err.message)}). Check it's in the repo and is valid JSON, then refresh.</p>`;
+    return;
   }
-
-  renderAdminCodes();
+  $("#footer-author").textContent = `${state.data.title} · ${state.data.author}`;
+  buildIndex();
+  navigate();
 }
 
-// -----------------------------------------------------------------
-// EVENT WIRING
-// -----------------------------------------------------------------
-function init() {
-  prepareLoginForm();
-  ensureAdminGraphsTab();
-  localStorage.removeItem("fwc26-admin-login");
-
-  if (hasSavedLogin()) {
-    showLoadingMessage("Loading");
-
-    setTimeout(async () => {
-      try {
-        if (await restoreLogin()) {
-          hideLoading();
-          return;
-        }
-      } catch (e) {
-        console.error(e);
-        forgetLogin();
-      }
-
-      show("view-login");
-      hideLoading();
-    }, 600);
-  } else {
-    setTimeout(() => {
-      show("view-login");
-      hideLoading();
-    }, 600);
-  }
-
-  $("#login-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    attemptLogin($("#login-code").value, $("#login-name").value);
-  });
-
-  $("#btn-signout").addEventListener("click", () => {
-    forgetLogin();
-
-    session.code = null;
-    session.name = null;
-    session.predictions = null;
-    session.isTest = false;
-
-    show("view-login");
-
-    $("#login-code").value = "";
-    $("#login-name").value = "";
-  });
-
-  const modal = $("#modal-no-code");
-
-  $("#btn-no-code").addEventListener("click", () => {
-    const subject = encodeURIComponent("FWC26 Pool — Please send me a code");
-    const body = encodeURIComponent(
-`Hi Ethan,
-
-Could I have a code for the World Cup 2026 predictions pool, please? I know it's free to enter and the winner gets a prize.
-
-My name: 
-
-Thanks!`,
-    );
-
-    $("#no-code-mailto").href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
-    $("#no-code-email-display").textContent = CONTACT_EMAIL;
-
-    modal.classList.remove("hidden");
-  });
-
-  $$("[data-close-modal]").forEach((el) => {
-    el.addEventListener("click", () => modal.classList.add("hidden"));
-  });
-
-  $("#btn-admin").addEventListener("click", gotoAdmin);
-
-  $("#btn-admin-back").addEventListener("click", () => {
-    show("view-login");
-  });
-
-  $("#admin-pw-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    if ($("#admin-pw").value === ADMIN_PASSWORD) {
-      unlockAdmin();
-    } else {
-      $("#admin-pw-error").textContent = "Wrong password.";
-      $("#admin-pw-error").hidden = false;
-    }
-  });
-
-  $("#btn-seed-codes").addEventListener("click", seedCodes);
-
-  $$("#app-tabs .app-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      $$("#app-tabs .app-tab").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-
-      const t = btn.dataset.tab;
-
-      ["groups", "bracket", "leaderboard"].forEach((key) => {
-        $("#tab-" + key).classList.toggle("hidden", key !== t);
-      });
-
-      if (t === "bracket") renderBracketTab();
-      if (t === "leaderboard") renderLeaderboardTab();
-    });
-  });
-
-  $$(".app-tabs--admin .app-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      $$(".app-tabs--admin .app-tab").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-
-      const t = btn.dataset.adminTab;
-
-      ["leaderboard", "results", "graphs", "codes", "setup"].forEach((key) => {
-        $("#admin-tab-" + key).classList.toggle("hidden", key !== t);
-      });
-
-      if (t === "leaderboard") renderAdminLeaderboard();
-      if (t === "results") renderAdminResults();
-      if (t === "graphs") renderAdminGraphs();
-      if (t === "codes") renderAdminCodes();
-    });
-  });
-}
-
-document.addEventListener("DOMContentLoaded", init);
+init();
