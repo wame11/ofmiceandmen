@@ -1,6 +1,8 @@
 // =============================================================
-// FIREBASE CONFIG — fill in with your own project values.
-// Get these from: Firebase Console → Project settings → General
+// FIREBASE CONFIG — same project as the rest of the site.
+// Your added notes, quotes and spider diagrams are saved in the
+// Realtime Database under the "omam/" path so they sync between
+// devices. Values come from: Firebase Console → Project settings.
 // =============================================================
 
 export const firebaseConfig = {
@@ -13,14 +15,5 @@ export const firebaseConfig = {
   databaseURL: "https://worldcup-d1228-default-rtdb.europe-west1.firebasedatabase.app",
 };
 
-// =============================================================
-// ADMIN PASSWORD — change this to something only you know.
-// Anyone with this password can see the leaderboard AND enter
-// official tournament results. Keep it secret.
-// =============================================================
-export const ADMIN_PASSWORD = "ETHANADAM";
-
-// =============================================================
-// YOUR EMAIL — where players send "I need a code" messages.
-// =============================================================
-export const CONTACT_EMAIL = "ethansamuelross@icloud.com";
+// Root path in the database for everything this site saves.
+export const DB_ROOT = "omam";

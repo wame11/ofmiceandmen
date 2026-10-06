@@ -1,0 +1,412 @@
+{
+  "title": "Of Mice and Men — Revision Notes",
+  "author": "Ethan Ross",
+  "conventions": {
+    "quotes": "Text in double quotes is a quotation from the novel",
+    "context": "Items starting with ★ are context / teacher points (AO4)",
+    "bookRef": "[p.X] = page X of Ethan's exercise book"
+  },
+  "assessmentObjectives": [
+    {
+      "ao": "AO1",
+      "points": [
+        "Relevant quotations",
+        "Explain ideas",
+        "Stay focused on the question",
+        "Communicate effectively"
+      ]
+    },
+    {
+      "ao": "AO2",
+      "points": [
+        "Most examined AO",
+        "What has the writer done?",
+        "Why has the writer done something?",
+        "To analyse effects on readers",
+        "Identify methods",
+        "Needed for all"
+      ]
+    },
+    {
+      "ao": "AO3",
+      "points": [
+        "Comparing different poems",
+        "Use comparative vocabulary",
+        "Find similarities and differences"
+      ]
+    },
+    {
+      "ao": "AO4",
+      "points": [
+        "Context links to analysis",
+        "Explain why context matters",
+        "This is only for Romeo and Juliet and Of Mice and Men"
+      ]
+    }
+  ],
+  "characters": [
+    {
+      "id": "george",
+      "name": "George Milton",
+      "tagline": "Small, quick, protective — the father figure",
+      "nodes": [
+        "Cares for Lennie even if it doesn't benefit him",
+        "Like a father figure to Lennie",
+        "Gets angry quickly",
+        "\"I hate his guts\" — talking about Curley",
+        "Opposite of Lennie",
+        "\"Small, dark of face\"",
+        "\"Defined\" features",
+        "\"Restless eyes\"",
+        "Short temper: \"George exploded\" → \"working up a slow anger\"",
+        "Says to Lennie: \"you'd drink out of a gutter if you was thirsty\"",
+        "Knew he would put Lennie in danger, but didn't care (Sacramento River)",
+        "Metaphorical journey",
+        "\"Think I'd let you carry your own work card\" — father-like figure, understands Lennie [p.8]",
+        "\"I could get along so easy if I didn't have you\" [p.8]"
+      ],
+      "bookPage": "12"
+    },
+    {
+      "id": "lennie",
+      "name": "Lennie Small",
+      "tagline": "Huge, gentle, childlike — and dangerous without meaning to be",
+      "nodes": [
+        "Drinks like a \"horse\"",
+        "Animals are also innocent — so is Lennie",
+        "Compared to animals due to not understanding things",
+        "To convey how Lennie is different",
+        "Walks like \"a bear drags his paws\"",
+        "Does not understand the consequences of his actions",
+        "Dependent on George",
+        "\"I don't like this place, George\"",
+        "Obsessed with animals",
+        "Appears to have a low IQ / mentally impaired intellectual ability",
+        "Obsession with soft things → foreshadows idea of danger / problematic obsession",
+        "\"He's a nice fella\" · \"He's jes' like a kid\" — Slim",
+        "Lennie's eyes were \"frightened\" — Steinbeck tries to make us sympathise with him",
+        "Gentle giant — some of the time",
+        "Clumsy and forgets a lot",
+        "Not aware of his strength",
+        "As much a victim as his victims",
+        "\"Strong as a bull\" → animal imagery [p.9]"
+      ],
+      "bookPage": "11"
+    },
+    {
+      "id": "candy",
+      "name": "Candy",
+      "tagline": "The old swamper who fears being thrown away",
+      "nodes": [
+        "His dog is: \"G-d damn old\" · \"stinks like hell\"",
+        "Had the dog \"since he was a pup\"",
+        "When his dog was shot, he \"turned to the wall\"",
+        "Dog is foreshadowing of Candy",
+        "Low in the hierarchy",
+        "Ageing \"swamper\"",
+        "Disabled physically → missing right hand (\"stick-like wrist\")",
+        "\"They'll put me on the county\"",
+        "Product of the harsh ranch world",
+        "A gossip — gossips to make conversation: lonely himself · is vulnerable · looks to establish connections",
+        "\"Warmed to his gossip\" → salacious",
+        "Sexist / misogynistic — casual misogyny",
+        "Uses \"tart\" to describe Curley's wife — a derogatory term that draws prejudice towards her before we meet her [p.9]"
+      ],
+      "bookPage": "16"
+    },
+    {
+      "id": "crooks",
+      "name": "Crooks",
+      "tagline": "The stable buck — isolated by racism",
+      "nodes": [
+        "Othered",
+        "Dehumanised",
+        "Kicked by a horse → crooked back (why he's called Crooks)",
+        "No compensation",
+        "World is cruel to him",
+        "Described as the \"n-word\" before his personality",
+        "Deferential attitude",
+        "Is marginalised",
+        "Uses \"Mr.\" when talking to Slim",
+        "★ The average black person in 1930s America was: discriminated against · dehumanised · marginalised"
+      ],
+      "bookPage": "17"
+    },
+    {
+      "id": "curley",
+      "name": "Curley",
+      "tagline": "The boss's son — small, insecure, looking for a fight",
+      "nodes": [
+        "\"Next time you answer when you're spoken to\"",
+        "Pugnacious",
+        "Aggressive",
+        "Quick to anger",
+        "Small",
+        "Little guy who \"hates big guys\"",
+        "\"Lightweight\"",
+        "\"Yellow jackets\"",
+        "\"Ants in his pants\" — nervous and tense",
+        "Wears high-heeled boots",
+        "Insecure",
+        "Fragile masculinity",
+        "Dependent on father",
+        "Can behave how he likes as he's the boss's son",
+        "Scrappy",
+        "Sees the ranch as a battleground, not a workplace",
+        "Ignores wife; thinks love is physical, not emotional → \"glove full of vaseline\"",
+        "George calls him a \"punk\" — knows straight away he'll cause problems [p.21]"
+      ],
+      "bookPage": "17"
+    },
+    {
+      "id": "wife",
+      "name": "Curley's Wife",
+      "tagline": "The only woman on the ranch — and never given a name",
+      "nodes": [
+        "Only referred to as \"Curley's wife\"",
+        "Wears red to show danger",
+        "Gives \"the eye\" — flirty",
+        "\"Looloo\" (slang)",
+        "Looks for attention, which Curley doesn't give",
+        "Wants an emotional connection with Curley",
+        "Loveless marriage with Curley",
+        "Matrimonial discord (game of avoiding husband)",
+        "Possessive / disharmony (possession of Curley) → contrast to the natural world",
+        "Femme fatale = lethal woman",
+        "Only woman",
+        "Suffers male-centric animosity",
+        "Prejudice against her: \"tart\" · \"bitch\" · \"poison\"",
+        "We hear about her before we meet her — Steinbeck wants us to draw prejudice towards her (see p.31)",
+        "Seeks conversation with the ranch workers as she seeks conversation in a male-orientated society",
+        "Curley's wife and Curley are not seen together [p.9]",
+        "★ Women gained the right to vote in 1920, but social attitudes remained largely patriarchal [p.24]"
+      ],
+      "bookPage": "22"
+    },
+    {
+      "id": "slim",
+      "name": "Slim",
+      "tagline": "The jerkline skinner — quiet authority",
+      "nodes": [
+        "Authority — \"his word was taken on any subject\"",
+        "\"Gravity in his manner\"",
+        "\"All talk stopped when he spoke\" [p.24]",
+        "\"Prince of the ranch\"",
+        "\"God-like eyes\"",
+        "\"Jerkline skinner\"",
+        "Tall",
+        "His compassion",
+        "Morality",
+        "Transcendent understanding — \"understanding beyond thought\"",
+        "Can detect truth",
+        "Moves with dignity",
+        "\"Slim don't need to wear high-heeled boots\"",
+        "Doesn't need to show his authority",
+        "Makes George tell Slim things — there was \"calm\"",
+        "Contrasts with Candy"
+      ],
+      "bookPage": "23"
+    },
+    {
+      "id": "boss",
+      "name": "The Boss",
+      "tagline": "Owns the land — and everyone's job",
+      "nodes": [
+        "Referred to as \"the boss\"",
+        "Sense of power",
+        "Wealthy appearance",
+        "Wears high-heeled boots",
+        "Both the boss and his son Curley wear high-heeled boots — shows authority, wealth and status [p.9]",
+        "Suspicious of George and Lennie",
+        "\"Squinted one eye nearly closed\"",
+        "\"Looked for a long moment at the 2 men\"",
+        "\"What stake you got in this guy?\" [p.18]",
+        "Living the land-ownership dream"
+      ],
+      "bookPage": "14"
+    }
+  ],
+  "settings": [
+    {
+      "id": "nature",
+      "name": "The Natural World",
+      "tagline": "The Salinas River pool — calm, green, Eden-like",
+      "nodes": [
+        "Peaceful and harmonious with the repetition of green → hope, possibility",
+        "\"Hillside bank and runs deep and green\"",
+        "Eden-like",
+        "\"Golden foothill slopes\" — curve",
+        "\"Gentle movement of animals\" → contributes to the calm atmosphere",
+        "Sycamore described as having \"limbs\"",
+        "Clear juxtaposition between the calm natural world and the money-minded farm"
+      ],
+      "bookPage": "10"
+    },
+    {
+      "id": "bunkhouse",
+      "name": "The Bunkhouse",
+      "tagline": "Where the men live — bare, stark, functional",
+      "nodes": [
+        "\"It's mean here\" — Lennie",
+        "Contrast to the natural world",
+        "\"Whitewashed walls\"",
+        "\"Unpainted floor\"",
+        "Described as stark",
+        "Described in stark, utilitarian terms [p.9]"
+      ],
+      "bookPage": "15"
+    }
+  ],
+  "incidents": [
+    {
+      "id": "busdriver",
+      "title": "The Bus Driver",
+      "chapter": "Chapter 1",
+      "what": "The bus drops George and Lennie off miles short of the ranch, so they have to walk the rest.",
+      "notes": [
+        "Bus driver incident — \"crazy bastard\" — shows George's short temper [p.8]"
+      ]
+    },
+    {
+      "id": "ketchup",
+      "title": "The Ketchup Incident",
+      "chapter": "Chapter 1",
+      "what": "As they eat beans by the fire, Lennie says he likes them with ketchup.",
+      "notes": [
+        "\"George exploded\" because Lennie asked for ketchup [p.8]",
+        "Ketchup incident shows Lennie's bad memory and George's short temper [p.8]",
+        "Short temper: \"George exploded\" → \"working up a slow anger\" [p.12]"
+      ]
+    },
+    {
+      "id": "mouse",
+      "title": "The Dead Mouse",
+      "chapter": "Chapter 1",
+      "what": "Lennie has been carrying a dead mouse in his pocket to pet it; George makes him hand it over and throws it away.",
+      "notes": [
+        "\"They was dead, because they was so little\" → tragic disconnect between intent and consequences [p.8]",
+        "Obsession with soft things → foreshadows idea of danger / problematic obsession [p.11]"
+      ],
+      "para_title": "How does Steinbeck use the incident of the mouse?",
+      "para_page": "13",
+      "para": "Lennie's obsession with petting soft things (mice, puppies and eventually Curley's wife's hair) is used by Steinbeck to highlight his childlike innocence, but it is, as we will see, this habit that leads to accidental violence, with him confessing that with the animals he pinched their heads then \"they was dead, because they was so little.\" This highlights a tragic disconnect between intention and consequence; like an animal that doesn't know its own strength, Lennie kills it without meaning to. He treats mice and dogs like toys, but his lack of control, both physical and mental, turns these reactions deadly."
+    },
+    {
+      "id": "river",
+      "title": "The Sacramento River",
+      "chapter": "Chapter 3 (George tells Slim)",
+      "what": "George admits that he once told Lennie to jump into the Sacramento River, even though Lennie couldn't swim.",
+      "notes": [
+        "Knew that he would put Lennie in danger, but didn't care [p.12]"
+      ],
+      "para_title": "George's confession to Slim",
+      "para_page": "25",
+      "para": "In Chapter 3, George has a conversation with Slim and confesses that he \"used to play jokes\" on Lennie and that he had once made Lennie [jump] into the Sacramento River, even with the fact George knew Lennie couldn't swim. Steinbeck uses this to show George's early immaturity and shows Lennie follows all orders from George like a father and son would. Over time George stops using his power on Lennie as he realises, after Lennie's near-death experience, that he has a duty to look after Lennie, so won't treat him that way again."
+    },
+    {
+      "id": "dog",
+      "title": "The Shooting of Candy's Dog",
+      "chapter": "Chapter 3",
+      "what": "Carlson pressures Candy into letting him take the old dog outside and shoot it.",
+      "notes": [
+        "When the dog was shot, Candy \"turned to the wall\" [p.16]",
+        "Had the dog \"since he was a pup\" [p.16]",
+        "Dog is foreshadowing of Candy [p.16]"
+      ],
+      "para_title": "The shooting of Candy's dog",
+      "para_page": "26",
+      "para": "In Chapter 3 of Of Mice and Men, Steinbeck's portrayal of Carlson's unceremonious shooting of Candy's dog is used to highlight the brutal pragmatism of ranch life and the dehumanising effects of the Great Depression and the hardships it produced. The dog is described as \"old\"; language which reduces it to a burden rather than a companion, reflecting a society that values usefulness over emotional connection. Carlson's insistence that the dog should be shot emphasises the cold, utilitarian mindset. Carlson lists all the things the dog \"can't\" do, but fails to see what it can do. The lack of ceremony in the killing, being done \"offstage\" as it were, with the \"shot\" breaking the bunkhouse silence. Candy's acquiescence reveals his awareness that he, too, is ageing, foreshadowing the fear of being cast aside when he is no longer of use."
+    },
+    {
+      "id": "hand",
+      "title": "Curley's Hand",
+      "chapter": "Chapter 3",
+      "what": "Curley attacks Lennie in the bunkhouse; Lennie doesn't fight back until George tells him to.",
+      "notes": [
+        "Lennie crushes Curley's hand once George tells him to defend himself. This incident is used by Steinbeck to foreshadow the danger Lennie poses when panicked or provoked [p.24]"
+      ]
+    }
+  ],
+  "notesAndQuotes": [
+    {
+      "page": "8",
+      "title": "Of Mice and Men — Notes / Quotes",
+      "items": [
+        "★ Published 1937, set during the 1930s",
+        "Page 5: \"Think I'd let you carry your own work card\" — this shows a father-like figure, and how George understands Lennie",
+        "Page 8: \"I could get along so easy if I didn't have you\"",
+        "\"They was dead, because they was so little\" → tragic disconnect between intent and consequences",
+        "Page 12: \"George exploded\" because Lennie asked for ketchup",
+        "★ Depression-era America",
+        "They are looking for some stability in a world characterised by instability",
+        "Chapter 1 incidents: ketchup incident shows bad memory and George's short temper · bus driver incident — \"crazy bastard\" — shows George's short temper · mouse incident (see p.13)"
+      ]
+    },
+    {
+      "page": "9",
+      "title": "Continued notes",
+      "items": [
+        "Clear juxtaposition between the bunkhouse and the Edenic natural world. The river was \"deep and green\" and the landscape also has \"golden foothill slopes.\" Compare with the bunkhouse, which is described in stark, utilitarian terms with \"whitewashed walls\" and \"unpainted floor\"",
+        "\"Strong as a bull\" → animal imagery",
+        "★ Both the boss and his son Curley wear high-heeled boots — shows authority and wealth and status",
+        "\"Curley's like a lot of little guys. He hates big guys\" — because he is small he feels vulnerable",
+        "\"Got the eye\" — flirty",
+        "Candy uses \"tart\" to describe Curley's wife — this derogatory term is used to draw prejudice towards her, before we meet her",
+        "Curley's wife and Curley are not seen together"
+      ]
+    },
+    {
+      "page": "24",
+      "title": "Continued quotes + notes",
+      "items": [
+        "★ Women gained the right to vote in 1920",
+        "★ Social attitudes towards women remained largely patriarchal",
+        "\"Gravity in his manner\" — page 37",
+        "Slim — \"all talk stopped when he spoke\"",
+        "\"You think I'd let you carry your own work card\" — George to Lennie",
+        "\"Big guy like you, blubbering like a baby!\"",
+        "When Lennie sips water (Chapter 1) it's animal-like",
+        "★ The American Dream gives them hope / sustains them",
+        "Lennie crushes Curley's hand once George tells him to defend himself. This incident is used by Steinbeck to foreshadow the danger Lennie poses when panicked or provoked"
+      ]
+    }
+  ],
+  "paragraphs": [
+    {
+      "id": "curley",
+      "title": "How Steinbeck Introduces Curley",
+      "page": "21",
+      "task": "Task 2",
+      "text": "Steinbeck introduces Curley as an aggressive, insecure figure who relies on a strong posture to convey his apparent strength and dominance. Upon meeting the two men, Curley immediately shifts into a fighting stance, with his \"hands closed into fists.\" This tense and angry reaction shows his hostility towards the men due to the fact he feels threatened by the larger men. It is interesting to note \"his high-heeled boots\" which signifies a desire to elevate his posture and the desire to stop being a \"small guy\" and to show off his authority. As well as this, when George meets the \"pugnacious\" Curley for the first time, George refers to Curley as a \"punk\", suggesting that he knows straight away that he is going to cause problems.",
+      "feedback": {
+        "mark": "7/10",
+        "comment": "Some good ideas Ethan, with well-embedded quotes.",
+        "target": "Try to eliminate the careless errors, e.g. \"Upon\", \"interesting\", \"aggressive\". Try to come up with mnemonics to help."
+      }
+    },
+    {
+      "id": "wife",
+      "title": "How Steinbeck Introduces Curley's Wife",
+      "page": "20",
+      "task": "Task 3",
+      "text": "Steinbeck introduces Curley's wife as an isolated person. When she is first in the bunkhouse, she stands in the \"doorway\", which portrays her as a threat to the men as she is standing over them. She is wearing \"red,\" which is a clear contrast to the brown \"whitewashed\" bunkhouse. This shows her clear difference to the men and emphasises that people with authority (Curley, his wife and the boss) wear clothes to show their power. It is also interesting to note that Curley's wife is only referred to as \"Curley's wife\"; her name is not known. This and also the apostrophe on \"Curley's\" conveys the fact (due to the context of 1930s America) that Curley is the possessor of his wife and how she can be viewed as an object who can be owned.",
+      "feedback": {
+        "target": "When a word starts with a vowel, remember to use \"an\" — e.g. an isolated person, an apple, a chicken."
+      }
+    },
+    {
+      "id": "boss",
+      "title": "How Steinbeck Presents the Boss",
+      "page": "18",
+      "task": null,
+      "text": "The boss owns the land and controls the workers' jobs. This power makes him intimidating to the men and Steinbeck describes his flamboyant clothes to show his authority, such as the \"square steel buckle\" on his belt. Due to owning the land, the boss doesn't have to do \"labor\" or do manual work, which is suggested by his \"high-heeled boots and spurs\"; owning land gives him power to choose what he does and is a clear indication of why George and Lennie fixate upon owning \"a little piece of land\" themselves. Interestingly, we see the Boss is suspicious of George. We hear him ask \"Say, what you selling?\" and \"What stake you got in this guy?\" Steinbeck uses the Boss here to present a world where kindness and loyalty are unusual, causing people to distrust the friendship. The word \"selling\" implies deceit, as though George is trying to gain something from Lennie rather than simply helping him."
+    },
+    {
+      "id": "crops",
+      "title": "Embedding: George's \"Own Crops\"",
+      "page": "25",
+      "task": "Embedding practice",
+      "text": "We hear George, when confessing to Slim, suggest that \"if I was bright\" he would have his \"own crops\" instead of working for someone in a higher echelon. George implies that people at the bottom do the work but don't get the fruits of their labour. This highlights the injustice of a system which is exploitative."
+    }
+  ]
+}
