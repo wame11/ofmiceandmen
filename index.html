@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=2026-10-07" />
+  <link rel="stylesheet" href="assets/css/style.css?v=2026-10-07b" />
 </head>
 <body>
   <a class="skip" href="#view">Skip to content</a>
@@ -136,9 +136,27 @@
     </div>
   </div>
 
+  <!-- ============================================================
+       ZOOM IN ON ONE SECTION OF A SPIDER DIAGRAM
+       ============================================================ -->
+  <div id="zoom" class="overlay zoom" hidden>
+    <div class="overlay__backdrop" data-close></div>
+    <div class="zoom__stage" role="dialog" aria-modal="true" aria-labelledby="zoom-title" tabindex="-1">
+      <div class="zoom__bar">
+        <button type="button" class="zoom__nav" data-zoom="prev" aria-label="Previous section">←</button>
+        <div class="zoom__where"><span class="eyebrow" id="zoom-subject"></span><h2 id="zoom-title"></h2></div>
+        <span class="zoom__count" id="zoom-count"></span>
+        <button type="button" class="zoom__nav" data-zoom="next" aria-label="Next section">→</button>
+        <button type="button" class="overlay__close" data-close aria-label="Close">×</button>
+      </div>
+      <div class="zoom__body" id="zoom-body"></div>
+      <p class="zoom__hint">← → to move between sections · Esc to close</p>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="assets/js/app.js?v=2026-10-07"></script>
+  <script type="module" src="assets/js/app.js?v=2026-10-07b"></script>
   <noscript><p class="noscript">This revision site needs JavaScript to open the notes.</p></noscript>
 </body>
 </html>

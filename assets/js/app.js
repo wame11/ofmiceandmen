@@ -322,6 +322,7 @@ async function navigate() {
   const samePage = prev && prev.page === r.page && (["incidents", "notes", "paragraphs"].includes(r.page) || prev.sub === r.sub);
   state.route = r;
   setActiveNav(r.page);
+  if (!$("#zoom").hidden) closeOverlays();
 
   const view = $("#view");
   const token = ++navToken;
@@ -630,7 +631,7 @@ function renderSpiderPage(s) {
   let ci = 0;
   const card = (c, side) => (c ? `
     <article class="branch hl-watch ${c.mine ? "branch--mine" : ""}" data-side="${side}" data-i="${ci}" data-order="${cards.indexOf(c)}" data-w="${cardWeight(c).toFixed(2)}" style="--i:${ci++}">
-      <h3 class="branch__title"><span>${esc(c.title || "Notes")}</span>${c.mine ? '<span class="tag tag--mine">Mine</span>' : ""}</h3>
+      <h3 class="branch__title"><span>${esc(c.title || "Notes")}</span>${c.mine ? '<span class="tag tag--mine">Mine</span>' : ""}<button type="button" class="branch__zoom" data-action="zoom" aria-label="Zoom in on ${attr(c.title || "Notes")}"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l5 5M8.5 6v5M6 8.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></h3>
       <ul class="branch__pts">${c.items.map(pt).join("")}</ul>
     </article>` : "");
 
@@ -674,6 +675,7 @@ function renderSpiderPage(s) {
         ${items.some((it) => it.mine) ? "<span><i class=\"k-mine\"></i>added by me</span>" : ""}
         ${items.some((it) => it.kind === "context" || isContext(it.text)) ? '<span><span class="star">★</span>context</span>' : ""}
         ${links.length ? "<span><i class=\"k-link\"></i>linked points — point at one to trace its link</span>" : ""}
+        ${cards.length ? `<span class="k-zoom"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l5 5M8.5 6v5M6 8.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>click a section to zoom in</span>` : ""}
       </div>
     </section>`;
 }
@@ -1014,6 +1016,75 @@ function drawSpider(section, canvas, legs, pins, build) {
     t.setAttribute("d", d);
     [[x1, P.y], [x2, Q.y]].forEach(([x, y], j) => { const pin = linkPins[k * 2 + j]; pin.setAttribute("cx", f(x)); pin.setAttribute("cy", f(y)); });
   });
+}
+
+// -----------------------------------------------------------------
+// Zoom in on one section of a spider diagram
+// -----------------------------------------------------------------
+const zoom = { key: null, order: 0 };
+
+/** Show section `order` of the diagram `key` big in the middle of the screen. `focusId` flashes one
+    point (when you follow a link); `fromEl` is the card it grows out of. */
+function openZoom(key, order, focusId = null, fromEl = null) {
+  const s = subjectForKey(key);
+  const cards = s ? spiderCards(s) : [];
+  if (!cards.length) return;
+  const n = cards.length;
+  const next = ((order % n) + n) % n;
+  const wasOpen = !$("#zoom").hidden;
+  const dir = wasOpen ? Math.sign(order - zoom.order) || 1 : 0;
+  zoom.key = key;
+  zoom.order = next;
+
+  const links = resolveLinks(s, cards);
+  const where = new Map();
+  cards.forEach((c, ci) => c.items.forEach((it) => where.set(it.id, { it, ci, title: c.title || "Notes" })));
+  const partners = (id) => links.filter((pair) => pair.includes(id)).map((pair) => where.get(pair[0] === id ? pair[1] : pair[0])).filter(Boolean);
+  const c = cards[next];
+
+  $("#zoom").style.setProperty("--c", c.mine ? MINE : s.colour);
+  $("#zoom-subject").textContent = s.name;
+  $("#zoom-title").textContent = c.title || "Notes";
+  $("#zoom-count").textContent = n > 1 ? `${next + 1} of ${n}` : "";
+  $$("#zoom [data-zoom]").forEach((b) => { b.hidden = n < 2; });
+  const body = $("#zoom-body");
+  body.innerHTML = `
+    <ul class="branch__pts zoom__pts">
+      ${c.items.map((it) => {
+        const cls = ["pt", it.kind === "context" || isContext(it.text) ? "pt--ctx" : "", it.added ? "pt--added" : "", it.mine ? "pt--mine" : ""].filter(Boolean).join(" ");
+        return `<li class="${cls}" data-zid="${attr(it.id)}">
+          <span class="pt__text">${fmt(it.text, { kind: it.kind })}</span>${it.added ? ` ${ADDED_TAG}` : ""}${it.mine ? ' <span class="tag tag--mine">Mine</span>' : ""}
+          ${partners(it.id).map((p) => `
+            <button type="button" class="zoom__link" data-zoom-go="${p.ci}" data-zoom-focus="${attr(p.it.id)}">
+              <span class="zoom__link-label">Linked to · ${esc(p.title)} →</span>
+              <span>${fmt(p.it.text, { kind: p.it.kind })}</span>
+            </button>`).join("")}
+        </li>`;
+      }).join("")}
+    </ul>`;
+  body.scrollTop = 0;
+
+  const stage = $(".zoom__stage");
+  if (!wasOpen) {
+    openOverlay("#zoom");
+    stage.focus({ preventScroll: true });
+    // grow out of the card that was clicked
+    if (fromEl && !reduced() && stage.animate) {
+      const a = fromEl.getBoundingClientRect(), b = stage.getBoundingClientRect();
+      stage.animate([
+        { transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width}, ${a.height / b.height})`, opacity: 0.35 },
+        { transform: "none", opacity: 1 },
+      ], { duration: 340, easing: "cubic-bezier(.2, .8, .2, 1)" });
+    }
+  } else if (!reduced() && body.animate) {
+    body.animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: "none" }], { duration: 220, easing: "ease-out" });
+  }
+  const pts = $(".zoom__pts", body);
+  setTimeout(() => pts.classList.add("is-in"), reduced() ? 0 : wasOpen ? 60 : 260);
+  if (focusId) {
+    const li = $(`[data-zid="${CSS.escape(focusId)}"]`, body);
+    if (li) { li.scrollIntoView({ block: "nearest" }); li.classList.add("flash"); }
+  }
 }
 
 /** Point at (or tab to) a linked point: light up its link line(s) and the point at the other end */
@@ -1397,6 +1468,8 @@ function wireChrome() {
   // in-view actions
   $("#view").addEventListener("click", (e) => {
     const b = e.target.closest("[data-action]");
+    const card = e.target.closest(".spider .branch");
+    if (card && (!b || b.dataset.action === "zoom") && !String(getSelection?.() || "")) { openZoom(card.closest(".spider").dataset.key, Number(card.dataset.order), null, card); return; }
     if (!b) return;
     const a = b.dataset.action;
     if (a === "add-note") openNoteForm(b.dataset.target);
@@ -1414,6 +1487,15 @@ function wireChrome() {
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); if ($("#search").hidden) openSearch(); else closeOverlays(); return; }
     if (e.key === "Escape") { if ($$(".overlay").some((o) => !o.hidden)) { closeOverlays(); } else if ($(".note-form")) { closeNoteForm(); } }
+    if (!$("#zoom").hidden && (e.key === "ArrowLeft" || e.key === "ArrowRight")) { e.preventDefault(); openZoom(zoom.key, zoom.order + (e.key === "ArrowRight" ? 1 : -1)); }
+  });
+
+  // zoom: previous / next, and jumping along a link to the section at the other end
+  $("#zoom").addEventListener("click", (e) => {
+    const nav = e.target.closest("[data-zoom]");
+    if (nav) { openZoom(zoom.key, zoom.order + (nav.dataset.zoom === "next" ? 1 : -1)); return; }
+    const go = e.target.closest("[data-zoom-go]");
+    if (go) openZoom(zoom.key, Number(go.dataset.zoomGo), go.dataset.zoomFocus);
   });
 
   // spider diagrams: trace links from a point, keep the diagram fitted to the window
