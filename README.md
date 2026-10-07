@@ -7,6 +7,7 @@ Static site, no build step, hosted on GitHub Pages.
 
 - **Home / cover** → **Exam essentials** (AO1–AO4 + Context at a glance) → **Characters** → **Settings** → **Incidents** → **Notes & Quotes** → **Paragraphs**
 - A spider diagram for every character and setting that fits on one laptop screen with no scrolling: themed legs round a hub, dashed lines linking related points (point at one to trace its link), text sized to fit the window. It collapses to a list on phones and prints on one landscape page.
+- Click any section of a spider diagram (or its 🔍 button) to zoom in on it: big text, ← → to move between sections, and buttons that follow each link to the point at the other end
 - Instant search (`Ctrl`/`⌘` + `K`) across every leg, incident, note, quote and paragraph, plus famous quotes that aren't in the book, with *Quotes only* and *Context only* filters
 - Add your own notes, quotes, context points and spider legs anywhere, or start a brand-new diagram (e.g. Carlson, Whit) from a blank template. They're shown in blue and saved online so they appear on every device.
 - A random quote quiz and a print button that prints any page cleanly on A4
