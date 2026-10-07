@@ -6,8 +6,8 @@ Static site, no build step, hosted on GitHub Pages.
 ## What's in it
 
 - **Home / cover** → **Exam essentials** (AO1–AO4 + Context at a glance) → **Characters** → **Settings** → **Incidents** → **Notes & Quotes** → **Paragraphs**
-- An interactive spider diagram for every character and setting (collapses to a list on phones)
-- Instant search (`Ctrl`/`⌘` + `K`) across every node, incident, note, quote and paragraph, with *Quotes only* and *Context only* filters
+- A spider diagram for every character and setting that fits on one laptop screen with no scrolling: themed legs round a hub, dashed lines linking related points (point at one to trace its link), text sized to fit the window. It collapses to a list on phones and prints on one landscape page.
+- Instant search (`Ctrl`/`⌘` + `K`) across every leg, incident, note, quote and paragraph, plus famous quotes that aren't in the book, with *Quotes only* and *Context only* filters
 - Add your own notes, quotes, context points and spider legs anywhere, or start a brand-new diagram (e.g. Carlson, Whit) from a blank template. They're shown in blue and saved online so they appear on every device.
 - A random quote quiz and a print button that prints any page cleanly on A4
 
@@ -18,12 +18,36 @@ Static site, no build step, hosted on GitHub Pages.
 | `"double quotes"` | a quotation from the novel (highlighted yellow) |
 | `★` | a context / teacher point (AO4) |
 | `[p.X]` → **Book p.X** | page X of the exercise book |
+| **Not in my notes** / hollow dot ○ | added to help revision — not from the exercise book |
 
 ## Editing the notes
 
 `data/of_mice_and_men_notes.json` is the single source of truth. Edit it on GitHub and the site
 updates on the next deploy — nothing else needs changing. Keep the conventions above and the
 site will highlight, star and badge things automatically.
+
+Each character and setting has **branches** (the themed legs round the hub) and **links**:
+
+```json
+"branches": [
+  { "title": "Temper",
+    "nodes": ["Gets angry quickly"],
+    "extra": ["His anger never lasts — he softens and tells Lennie about the rabbits"] }
+],
+"links": [
+  ["I could get along so easy", "Guys like us"]
+]
+```
+
+- `nodes` are from the exercise book; `extra` are added points, shown with a hollow dot and *Not in my notes*.
+- A link joins two points with a dashed line. Each end is a short piece of the point's text, so
+  it keeps working if you reorder things — just make sure the piece only appears in one point.
+- The diagram works out where each branch goes and how big the text can be, so there's no layout to edit.
+
+`famousQuotes` is the bank of well-known quotes that aren't in the book. Each one has the
+`quote`, `who` says it, what it's `about` (a character or setting id, or `themes`), the `chapter`,
+what it `shows`, and `also` — extra search words, e.g. `"fat of the land"` so you can find
+*"fatta the lan'"* without spelling it like Lennie.
 
 ## Your added notes
 

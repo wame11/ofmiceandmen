@@ -49,21 +49,94 @@
       "id": "george",
       "name": "George Milton",
       "tagline": "Small, quick, protective — the father figure",
-      "nodes": [
-        "Cares for Lennie even if it doesn't benefit him",
-        "Like a father figure to Lennie",
-        "Gets angry quickly",
-        "\"I hate his guts\" — talking about Curley",
-        "Opposite of Lennie",
-        "\"Small, dark of face\"",
-        "\"Defined\" features",
-        "\"Restless eyes\"",
-        "Short temper: \"George exploded\" → \"working up a slow anger\"",
-        "Says to Lennie: \"you'd drink out of a gutter if you was thirsty\"",
-        "Knew he would put Lennie in danger, but didn't care (Sacramento River)",
-        "Metaphorical journey",
-        "\"Think I'd let you carry your own work card\" — father-like figure, understands Lennie [p.8]",
-        "\"I could get along so easy if I didn't have you\" [p.8]"
+      "branches": [
+        {
+          "title": "Appearance",
+          "nodes": [
+            "\"Small, dark of face\"",
+            "\"Restless eyes\"",
+            "\"Defined\" features",
+            "Opposite of Lennie"
+          ],
+          "extra": [
+            "\"Every part of him was defined: small, strong hands, slender arms, a thin and bony nose\" — a sharp body for a sharp mind"
+          ]
+        },
+        {
+          "title": "Father figure",
+          "nodes": [
+            "Cares for Lennie even if it doesn't benefit him",
+            "Like a father figure to Lennie",
+            "\"Think I'd let you carry your own work card\" — father-like figure, understands Lennie [p.8]",
+            "Knew he would put Lennie in danger, but didn't care (Sacramento River)"
+          ],
+          "extra": [
+            "Does the talking in front of the boss, hiding Lennie's disability so they both get the job",
+            "Tells Slim he once told Lennie to jump in the river and he nearly drowned — he stopped playing tricks on him after that"
+          ]
+        },
+        {
+          "title": "Temper",
+          "nodes": [
+            "Gets angry quickly",
+            "Short temper: \"George exploded\" → \"working up a slow anger\"",
+            "Says to Lennie: \"you'd drink out of a gutter if you was thirsty\"",
+            "\"I hate his guts\" — talking about Curley",
+            "\"I could get along so easy if I didn't have you\" [p.8]"
+          ],
+          "extra": [
+            "His anger never lasts — he softens and tells Lennie about the rabbits, so it reads as frustration, not cruelty"
+          ]
+        },
+        {
+          "title": "The dream",
+          "extra": [
+            "\"Guys like us, that work on ranches, are the loneliest guys in the world\" — but they have each other",
+            "Tells the dream like a bedtime story — Lennie knows it by heart and joins in",
+            "\"I think I knowed from the very first. I think I knowed we'd never do her\" — the dream dies with Lennie"
+          ]
+        },
+        {
+          "title": "Ending & journey",
+          "nodes": [
+            "Metaphorical journey"
+          ],
+          "extra": [
+            "Shoots Lennie by the pool where the novel began — a mercy killing, so Lennie dies happy and not at Curley's hands",
+            "Mirrors Candy, who said he should have shot his own dog — George won't let a stranger do it",
+            "Ends up alone — one of the lonely ranch workers he described in Chapter 1"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ Itinerant (migrant) workers travelled alone from ranch to ranch — a pair like George and Lennie was unusual",
+            "★ The Great Depression (1929–39): jobs were scarce and short, with no welfare if you lost one",
+            "★ The American Dream: owning your own land through hard work — George's dream shows how out of reach it was"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "I could get along so easy",
+          "Guys like us"
+        ],
+        [
+          "Cares for Lennie even if",
+          "Shoots Lennie by the pool"
+        ],
+        [
+          "Guys like us",
+          "★ Itinerant"
+        ],
+        [
+          "I think I knowed from the very first",
+          "★ The American Dream"
+        ],
+        [
+          "Knew he would put Lennie in danger",
+          "Tells Slim he once told Lennie"
+        ]
       ],
       "bookPage": "12"
     },
@@ -71,25 +144,94 @@
       "id": "lennie",
       "name": "Lennie Small",
       "tagline": "Huge, gentle, childlike — and dangerous without meaning to be",
-      "nodes": [
-        "Drinks like a \"horse\"",
-        "Animals are also innocent — so is Lennie",
-        "Compared to animals due to not understanding things",
-        "To convey how Lennie is different",
-        "Walks like \"a bear drags his paws\"",
-        "Does not understand the consequences of his actions",
-        "Dependent on George",
-        "\"I don't like this place, George\"",
-        "Obsessed with animals",
-        "Appears to have a low IQ / mentally impaired intellectual ability",
-        "Obsession with soft things → foreshadows idea of danger / problematic obsession",
-        "\"He's a nice fella\" · \"He's jes' like a kid\" — Slim",
-        "Lennie's eyes were \"frightened\" — Steinbeck tries to make us sympathise with him",
-        "Gentle giant — some of the time",
-        "Clumsy and forgets a lot",
-        "Not aware of his strength",
-        "As much a victim as his victims",
-        "\"Strong as a bull\" → animal imagery [p.9]"
+      "branches": [
+        {
+          "title": "Animal imagery",
+          "nodes": [
+            "Drinks like a \"horse\"",
+            "Walks like \"a bear drags his paws\"",
+            "\"Strong as a bull\" → animal imagery [p.9]",
+            "Compared to animals due to not understanding things",
+            "To convey how Lennie is different",
+            "Animals are also innocent — so is Lennie"
+          ]
+        },
+        {
+          "title": "Childlike",
+          "nodes": [
+            "Appears to have a low IQ / mentally impaired intellectual ability",
+            "Clumsy and forgets a lot",
+            "Dependent on George",
+            "\"I don't like this place, George\"",
+            "\"He's a nice fella\" · \"He's jes' like a kid\" — Slim"
+          ],
+          "extra": [
+            "\"I remember about the rabbits, George\" — forgets almost everything except the dream",
+            "\"If you don' want me I can go off in the hills an' find a cave\" — a child threatening to run away"
+          ]
+        },
+        {
+          "title": "Strength & danger",
+          "nodes": [
+            "Not aware of his strength",
+            "Does not understand the consequences of his actions",
+            "Obsessed with animals",
+            "Obsession with soft things → foreshadows idea of danger / problematic obsession",
+            "Gentle giant — some of the time"
+          ],
+          "extra": [
+            "Kills mice, then his puppy, then Curley's wife — each death bigger, building to the climax",
+            "\"Curley was flopping like a fish on a line\" — crushes Curley's hand without meaning harm",
+            "In Weed he grabbed a girl's red dress because it was soft and wouldn't let go — Curley's wife is the same story again"
+          ]
+        },
+        {
+          "title": "Sympathy",
+          "nodes": [
+            "Lennie's eyes were \"frightened\" — Steinbeck tries to make us sympathise with him",
+            "As much a victim as his victims"
+          ],
+          "extra": [
+            "\"You ain't so little as mice\" — confused and sad over the dead puppy, not cruel"
+          ]
+        },
+        {
+          "title": "The dream",
+          "extra": [
+            "\"An' live off the fatta the lan'\" — he finishes George's sentences: the farm is his favourite story",
+            "\"I got you to look after me, and you got me to look after you\" — why they're different from other workers",
+            "Dies looking across the river while George describes the farm — happy at the very end"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ People with learning disabilities were often locked in institutions in the 1930s — Lennie has no protection except George",
+            "★ Steinbeck said Lennie was based on a real man he worked alongside on a ranch"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Animals are also innocent",
+          "As much a victim"
+        ],
+        [
+          "Dependent on George",
+          "I got you to look after me"
+        ],
+        [
+          "Strong as a bull",
+          "Not aware of his strength"
+        ],
+        [
+          "Does not understand the consequences",
+          "You ain't so little as mice"
+        ],
+        [
+          "Appears to have a low IQ",
+          "★ People with learning disabilities"
+        ]
       ],
       "bookPage": "11"
     },
@@ -97,20 +239,78 @@
       "id": "candy",
       "name": "Candy",
       "tagline": "The old swamper who fears being thrown away",
-      "nodes": [
-        "His dog is: \"G-d damn old\" · \"stinks like hell\"",
-        "Had the dog \"since he was a pup\"",
-        "When his dog was shot, he \"turned to the wall\"",
-        "Dog is foreshadowing of Candy",
-        "Low in the hierarchy",
-        "Ageing \"swamper\"",
-        "Disabled physically → missing right hand (\"stick-like wrist\")",
-        "\"They'll put me on the county\"",
-        "Product of the harsh ranch world",
-        "A gossip — gossips to make conversation: lonely himself · is vulnerable · looks to establish connections",
-        "\"Warmed to his gossip\" → salacious",
-        "Sexist / misogynistic — casual misogyny",
-        "Uses \"tart\" to describe Curley's wife — a derogatory term that draws prejudice towards her before we meet her [p.9]"
+      "branches": [
+        {
+          "title": "His old dog",
+          "nodes": [
+            "His dog is: \"G-d damn old\" · \"stinks like hell\"",
+            "Had the dog \"since he was a pup\"",
+            "When his dog was shot, he \"turned to the wall\"",
+            "Dog is foreshadowing of Candy"
+          ],
+          "extra": [
+            "\"I ought to of shot that dog myself, George. I shouldn't ought to of let no stranger shoot my dog\"",
+            "Carlson shoots the dog because it is old and useless — the ranch has no room for anything weak"
+          ]
+        },
+        {
+          "title": "Age & disability",
+          "nodes": [
+            "Ageing \"swamper\"",
+            "Disabled physically → missing right hand (\"stick-like wrist\")",
+            "Low in the hierarchy",
+            "\"They'll put me on the county\"",
+            "Product of the harsh ranch world"
+          ],
+          "extra": [
+            "\"When they can me here I wisht somebody'd shoot me\" — he fears ending up like his dog"
+          ]
+        },
+        {
+          "title": "Gossip & prejudice",
+          "nodes": [
+            "A gossip — gossips to make conversation: lonely himself · is vulnerable · looks to establish connections",
+            "\"Warmed to his gossip\" → salacious",
+            "Sexist / misogynistic — casual misogyny",
+            "Uses \"tart\" to describe Curley's wife — a derogatory term that draws prejudice towards her before we meet her [p.9]"
+          ],
+          "extra": [
+            "Insults Curley's wife even over her dead body — blames her for ruining the dream"
+          ]
+        },
+        {
+          "title": "The dream",
+          "extra": [
+            "\"S'pose I went in with you guys. Tha's three hundred an' fifty bucks I'd put in\" — his savings make the dream real",
+            "The farm would give him a home and a purpose in old age, instead of being thrown away",
+            "After Curley's wife dies he begs George to still buy the farm with him — George can't"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ The Social Security Act (1935) was brand new and left out farm workers — no pension for men like Candy",
+            "★ He got $250 for losing his hand — injured workers had almost no protection"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Dog is foreshadowing of Candy",
+          "When they can me here"
+        ],
+        [
+          "\"They'll put me on the county\"",
+          "★ The Social Security Act"
+        ],
+        [
+          "A gossip",
+          "The farm would give him a home"
+        ],
+        [
+          "Disabled physically",
+          "★ He got $250"
+        ]
       ],
       "bookPage": "16"
     },
@@ -118,17 +318,88 @@
       "id": "crooks",
       "name": "Crooks",
       "tagline": "The stable buck — isolated by racism",
-      "nodes": [
-        "Othered",
-        "Dehumanised",
-        "Kicked by a horse → crooked back (why he's called Crooks)",
-        "No compensation",
-        "World is cruel to him",
-        "Described as the \"n-word\" before his personality",
-        "Deferential attitude",
-        "Is marginalised",
-        "Uses \"Mr.\" when talking to Slim",
-        "★ The average black person in 1930s America was: discriminated against · dehumanised · marginalised"
+      "branches": [
+        {
+          "title": "Racism & isolation",
+          "nodes": [
+            "Othered",
+            "Dehumanised",
+            "Described as the \"n-word\" before his personality",
+            "Is marginalised"
+          ],
+          "extra": [
+            "\"I ain't wanted in the bunk house, and you ain't wanted in my room\"",
+            "Lives alone in the harness room by the barn — kept apart from the white men",
+            "\"They play cards in there, but I can't play because I'm black\""
+          ]
+        },
+        {
+          "title": "Body & work",
+          "nodes": [
+            "Kicked by a horse → crooked back (why he's called Crooks)",
+            "No compensation",
+            "World is cruel to him"
+          ],
+          "extra": [
+            "\"More permanent than the other men\" — he owns more things, but he's trapped on the ranch"
+          ]
+        },
+        {
+          "title": "Pride & status",
+          "nodes": [
+            "Deferential attitude",
+            "Uses \"Mr.\" when talking to Slim"
+          ],
+          "extra": [
+            "\"Crooks was a proud, aloof man. He kept his distance and demanded that other people keep theirs\"",
+            "Keeps a dictionary and a copy of the California civil code — he knows his rights but can't use them",
+            "Taunts Lennie that George might not come back — enjoys power over someone weaker for once"
+          ]
+        },
+        {
+          "title": "Loneliness & the dream",
+          "extra": [
+            "\"A guy needs somebody—to be near him\"",
+            "\"Nobody never gets to heaven, and nobody gets no land\" — he's seen the dream fail many times",
+            "Grew up on his father's chicken ranch in California — he once had what George and Lennie dream of",
+            "Asks to join the dream, then takes it back: \"Jus' foolin'. I wouldn' want to go no place like that\""
+          ]
+        },
+        {
+          "title": "Curley's wife's threat",
+          "extra": [
+            "\"I could get you strung up on a tree so easy it ain't even funny\" — Curley's wife",
+            "\"Crooks had reduced himself to nothing\" — he has no power against a white woman"
+          ]
+        },
+        {
+          "title": "Context",
+          "nodes": [
+            "★ The average black person in 1930s America was: discriminated against · dehumanised · marginalised"
+          ],
+          "extra": [
+            "★ Lynching: a white woman's word could get a black man killed by a mob — her threat is real",
+            "★ Jim Crow laws segregated the South, and racism was normal across 1930s America"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Deferential attitude",
+          "Crooks had reduced himself to nothing"
+        ],
+        [
+          "I could get you strung up",
+          "★ Lynching"
+        ],
+        [
+          "Is marginalised",
+          "A guy needs somebody"
+        ],
+        [
+          "Lives alone in the harness room",
+          "More permanent than the other men"
+        ]
       ],
       "bookPage": "17"
     },
@@ -136,25 +407,91 @@
       "id": "curley",
       "name": "Curley",
       "tagline": "The boss's son — small, insecure, looking for a fight",
-      "nodes": [
-        "\"Next time you answer when you're spoken to\"",
-        "Pugnacious",
-        "Aggressive",
-        "Quick to anger",
-        "Small",
-        "Little guy who \"hates big guys\"",
-        "\"Lightweight\"",
-        "\"Yellow jackets\"",
-        "\"Ants in his pants\" — nervous and tense",
-        "Wears high-heeled boots",
-        "Insecure",
-        "Fragile masculinity",
-        "Dependent on father",
-        "Can behave how he likes as he's the boss's son",
-        "Scrappy",
-        "Sees the ranch as a battleground, not a workplace",
-        "Ignores wife; thinks love is physical, not emotional → \"glove full of vaseline\"",
-        "George calls him a \"punk\" — knows straight away he'll cause problems [p.21]"
+      "branches": [
+        {
+          "title": "Aggression",
+          "nodes": [
+            "Pugnacious",
+            "Aggressive",
+            "Quick to anger",
+            "Scrappy",
+            "Sees the ranch as a battleground, not a workplace",
+            "\"Next time you answer when you're spoken to\""
+          ],
+          "extra": [
+            "\"His glance was at once calculating and pugnacious\""
+          ]
+        },
+        {
+          "title": "Small & insecure",
+          "nodes": [
+            "Small",
+            "Little guy who \"hates big guys\"",
+            "\"Lightweight\"",
+            "Insecure",
+            "Fragile masculinity",
+            "\"Ants in his pants\" — nervous and tense",
+            "\"Yellow jackets\""
+          ]
+        },
+        {
+          "title": "Power & status",
+          "nodes": [
+            "Wears high-heeled boots",
+            "Dependent on father",
+            "Can behave how he likes as he's the boss's son",
+            "George calls him a \"punk\" — knows straight away he'll cause problems [p.21]"
+          ],
+          "extra": [
+            "Picks on Lennie because he's big and doesn't fight back — a bully choosing a safe target"
+          ]
+        },
+        {
+          "title": "Marriage",
+          "nodes": [
+            "Ignores wife; thinks love is physical, not emotional → \"glove full of vaseline\""
+          ],
+          "extra": [
+            "Boasts about his marriage but never spends time with his wife — possessive, not loving"
+          ]
+        },
+        {
+          "title": "Fight & revenge",
+          "extra": [
+            "\"Curley was flopping like a fish on a line\" — Lennie crushes his hand",
+            "Agrees to say his hand got caught in a machine — too proud to admit he lost",
+            "\"I'm gonna shoot the guts outa that big bastard myself, even if I only got one hand\" — revenge, not grief"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ Ranch owners' families had total power — a worker who stood up to Curley could be fired on the spot",
+            "★ 1930s masculinity valued toughness and fighting — boxing is Curley's way of proving he's a man"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Fragile masculinity",
+          "★ 1930s masculinity"
+        ],
+        [
+          "Can behave how he likes",
+          "★ Ranch owners"
+        ],
+        [
+          "Little guy who",
+          "Picks on Lennie"
+        ],
+        [
+          "Ignores wife",
+          "I'm gonna shoot the guts"
+        ],
+        [
+          "\"Lightweight\"",
+          "flopping like a fish"
+        ]
       ],
       "bookPage": "17"
     },
@@ -162,24 +499,94 @@
       "id": "wife",
       "name": "Curley's Wife",
       "tagline": "The only woman on the ranch — and never given a name",
-      "nodes": [
-        "Only referred to as \"Curley's wife\"",
-        "Wears red to show danger",
-        "Gives \"the eye\" — flirty",
-        "\"Looloo\" (slang)",
-        "Looks for attention, which Curley doesn't give",
-        "Wants an emotional connection with Curley",
-        "Loveless marriage with Curley",
-        "Matrimonial discord (game of avoiding husband)",
-        "Possessive / disharmony (possession of Curley) → contrast to the natural world",
-        "Femme fatale = lethal woman",
-        "Only woman",
-        "Suffers male-centric animosity",
-        "Prejudice against her: \"tart\" · \"bitch\" · \"poison\"",
-        "We hear about her before we meet her — Steinbeck wants us to draw prejudice towards her (see p.31)",
-        "Seeks conversation with the ranch workers as she seeks conversation in a male-orientated society",
-        "Curley's wife and Curley are not seen together [p.9]",
-        "★ Women gained the right to vote in 1920, but social attitudes remained largely patriarchal [p.24]"
+      "branches": [
+        {
+          "title": "Appearance & danger",
+          "nodes": [
+            "Wears red to show danger",
+            "Gives \"the eye\" — flirty",
+            "\"Looloo\" (slang)",
+            "Femme fatale = lethal woman"
+          ],
+          "extra": [
+            "\"She had full, rouged lips and wide-spaced eyes, heavily made up. Her fingernails were red\"",
+            "\"The rectangle of sunshine in the doorway was cut off\" — she literally blocks out the light"
+          ]
+        },
+        {
+          "title": "No name, no power",
+          "nodes": [
+            "Only referred to as \"Curley's wife\"",
+            "Only woman",
+            "Suffers male-centric animosity",
+            "Prejudice against her: \"tart\" · \"bitch\" · \"poison\"",
+            "We hear about her before we meet her — Steinbeck wants us to draw prejudice towards her (see p.31)"
+          ]
+        },
+        {
+          "title": "Marriage",
+          "nodes": [
+            "Looks for attention, which Curley doesn't give",
+            "Wants an emotional connection with Curley",
+            "Loveless marriage with Curley",
+            "Matrimonial discord (game of avoiding husband)",
+            "Possessive / disharmony (possession of Curley) → contrast to the natural world",
+            "Curley's wife and Curley are not seen together [p.9]"
+          ],
+          "extra": [
+            "\"I don' like Curley. He ain't a nice fella\""
+          ]
+        },
+        {
+          "title": "Lonely & dreams",
+          "nodes": [
+            "Seeks conversation with the ranch workers as she seeks conversation in a male-orientated society"
+          ],
+          "extra": [
+            "\"Why can't I talk to you? I never get to talk to nobody. I get awful lonely\"",
+            "\"Coulda been in the movies, an' had nice clothes\" — her lost Hollywood dream",
+            "Threatens Crooks with lynching — cruel to the one person with less power than her"
+          ]
+        },
+        {
+          "title": "Death",
+          "extra": [
+            "\"The meanness and the plannings and the discontent and the ache for attention were all gone from her face\" — Steinbeck finally lets us pity her"
+          ]
+        },
+        {
+          "title": "Context",
+          "nodes": [
+            "★ Women gained the right to vote in 1920, but social attitudes remained largely patriarchal [p.24]"
+          ],
+          "extra": [
+            "★ 1930s women were expected to be wives and mothers, with few jobs or rights of their own",
+            "★ Hollywood was booming in the 1930s — films sold ordinary girls a dream of fame",
+            "★ Steinbeck wrote to the actress playing her (1938) that she was \"not a floozy\" — just lonely"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Only referred to as",
+          "★ 1930s women"
+        ],
+        [
+          "Looks for attention",
+          "The meanness and the plannings"
+        ],
+        [
+          "Loveless marriage",
+          "Why can't I talk to you"
+        ],
+        [
+          "Coulda been in the movies",
+          "★ Hollywood"
+        ],
+        [
+          "Suffers male-centric animosity",
+          "Threatens Crooks"
+        ]
       ],
       "bookPage": "22"
     },
@@ -187,23 +594,83 @@
       "id": "slim",
       "name": "Slim",
       "tagline": "The jerkline skinner — quiet authority",
-      "nodes": [
-        "Authority — \"his word was taken on any subject\"",
-        "\"Gravity in his manner\"",
-        "\"All talk stopped when he spoke\" [p.24]",
-        "\"Prince of the ranch\"",
-        "\"God-like eyes\"",
-        "\"Jerkline skinner\"",
-        "Tall",
-        "His compassion",
-        "Morality",
-        "Transcendent understanding — \"understanding beyond thought\"",
-        "Can detect truth",
-        "Moves with dignity",
-        "\"Slim don't need to wear high-heeled boots\"",
-        "Doesn't need to show his authority",
-        "Makes George tell Slim things — there was \"calm\"",
-        "Contrasts with Candy"
+      "branches": [
+        {
+          "title": "Natural authority",
+          "nodes": [
+            "Authority — \"his word was taken on any subject\"",
+            "\"All talk stopped when he spoke\" [p.24]",
+            "\"Prince of the ranch\"",
+            "Doesn't need to show his authority",
+            "\"Slim don't need to wear high-heeled boots\""
+          ],
+          "extra": [
+            "\"He moved with a majesty only achieved by royalty and master craftsmen\""
+          ]
+        },
+        {
+          "title": "Appearance & skill",
+          "nodes": [
+            "\"Jerkline skinner\"",
+            "Tall",
+            "\"Gravity in his manner\"",
+            "\"God-like eyes\"",
+            "Moves with dignity"
+          ],
+          "extra": [
+            "So skilled with a bull whip he could kill a fly on a mule's rump without touching the mule"
+          ]
+        },
+        {
+          "title": "Wisdom",
+          "nodes": [
+            "Transcendent understanding — \"understanding beyond thought\"",
+            "Can detect truth",
+            "Makes George tell Slim things — there was \"calm\"",
+            "Morality"
+          ],
+          "extra": [
+            "\"I can tell a mean guy from a mile off\" — sees straight away that Lennie isn't dangerous",
+            "\"Maybe ever'body in the whole damn world is scared of each other\" — wonders why so few men travel together"
+          ]
+        },
+        {
+          "title": "Compassion",
+          "nodes": [
+            "His compassion",
+            "Contrasts with Candy"
+          ],
+          "extra": [
+            "Drowns four of his dog's new puppies but gives one to Lennie — kind, but practical",
+            "Backs Carlson over Candy's dog: \"I wisht somebody'd shoot me if I got old an' a cripple\"",
+            "\"You hadda, George. I swear you hadda\" — the only one who understands why George shot Lennie"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ A jerkline skinner drove a big mule team with a single line — the most skilled, respected job on a ranch",
+            "★ Slim can be read as Steinbeck's ideal working man — respect that comes from skill, not money"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "\"Jerkline skinner\"",
+          "★ A jerkline skinner"
+        ],
+        [
+          "\"God-like eyes\"",
+          "You hadda, George"
+        ],
+        [
+          "Moves with dignity",
+          "majesty only achieved"
+        ],
+        [
+          "Morality",
+          "Drowns four of his dog's new puppies"
+        ]
       ],
       "bookPage": "23"
     },
@@ -211,17 +678,71 @@
       "id": "boss",
       "name": "The Boss",
       "tagline": "Owns the land — and everyone's job",
-      "nodes": [
-        "Referred to as \"the boss\"",
-        "Sense of power",
-        "Wealthy appearance",
-        "Wears high-heeled boots",
-        "Both the boss and his son Curley wear high-heeled boots — shows authority, wealth and status [p.9]",
-        "Suspicious of George and Lennie",
-        "\"Squinted one eye nearly closed\"",
-        "\"Looked for a long moment at the 2 men\"",
-        "\"What stake you got in this guy?\" [p.18]",
-        "Living the land-ownership dream"
+      "branches": [
+        {
+          "title": "Power & status",
+          "nodes": [
+            "Referred to as \"the boss\"",
+            "Sense of power",
+            "Living the land-ownership dream"
+          ],
+          "extra": [
+            "Never given a name — defined only by his power, just as Curley's wife is defined by her husband"
+          ]
+        },
+        {
+          "title": "Appearance",
+          "nodes": [
+            "Wealthy appearance",
+            "Wears high-heeled boots",
+            "Both the boss and his son Curley wear high-heeled boots — shows authority, wealth and status [p.9]"
+          ],
+          "extra": [
+            "\"He wore high-heeled boots and spurs to prove he was not a laboring man\""
+          ]
+        },
+        {
+          "title": "Suspicion",
+          "nodes": [
+            "Suspicious of George and Lennie",
+            "\"Squinted one eye nearly closed\"",
+            "\"Looked for a long moment at the 2 men\"",
+            "\"What stake you got in this guy?\" [p.18]"
+          ],
+          "extra": [
+            "\"Well, I never seen one guy take so much trouble for another guy\" — friendship looks suspicious on the ranch",
+            "Suspects George is taking Lennie's pay — he can't imagine a friendship without a catch"
+          ]
+        },
+        {
+          "title": "Business first",
+          "extra": [
+            "Angry that the men arrived late — he cares about the lost work, not the workers",
+            "Candy says he once brought the men a gallon of whisky at Christmas — not cruel, just distant",
+            "Appears only once — the owner's power works from a distance"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ A few big landowners controlled California farming — workers owned nothing and could be sacked at any time",
+            "★ He represents the class system: the owner already has the land the workers can only dream of"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Living the land-ownership dream",
+          "★ He represents the class system"
+        ],
+        [
+          "Sense of power",
+          "boots and spurs"
+        ],
+        [
+          "Wealthy appearance",
+          "★ A few big landowners"
+        ]
       ],
       "bookPage": "14"
     }
@@ -231,14 +752,58 @@
       "id": "nature",
       "name": "The Natural World",
       "tagline": "The Salinas River pool — calm, green, Eden-like",
-      "nodes": [
-        "Peaceful and harmonious with the repetition of green → hope, possibility",
-        "\"Hillside bank and runs deep and green\"",
-        "Eden-like",
-        "\"Golden foothill slopes\" — curve",
-        "\"Gentle movement of animals\" → contributes to the calm atmosphere",
-        "Sycamore described as having \"limbs\"",
-        "Clear juxtaposition between the calm natural world and the money-minded farm"
+      "branches": [
+        {
+          "title": "Peace & beauty",
+          "nodes": [
+            "\"Hillside bank and runs deep and green\"",
+            "\"Golden foothill slopes\" — curve",
+            "Peaceful and harmonious with the repetition of green → hope, possibility",
+            "\"Gentle movement of animals\" → contributes to the calm atmosphere"
+          ]
+        },
+        {
+          "title": "Eden",
+          "nodes": [
+            "Eden-like",
+            "Sycamore described as having \"limbs\""
+          ],
+          "extra": [
+            "A safe place — George tells Lennie to come back and hide in the brush here if he gets into trouble"
+          ]
+        },
+        {
+          "title": "Contrast & structure",
+          "nodes": [
+            "Clear juxtaposition between the calm natural world and the money-minded farm"
+          ],
+          "extra": [
+            "The novel begins and ends at this pool — a cyclical structure: George and Lennie end up where they started"
+          ]
+        },
+        {
+          "title": "Chapter 6: Eden spoiled",
+          "extra": [
+            "\"A silent head and beak lanced down and plucked it out by the head\" — the heron kills the water snake, foreshadowing Lennie's death",
+            "Nature is beautiful but also cruel — the weak are killed by the strong, just like on the ranch"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ Steinbeck grew up in Salinas, California, and knew this valley and river well"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Eden-like",
+          "A silent head and beak"
+        ],
+        [
+          "Clear juxtaposition",
+          "Nature is beautiful but also cruel"
+        ]
       ],
       "bookPage": "10"
     },
@@ -246,15 +811,488 @@
       "id": "bunkhouse",
       "name": "The Bunkhouse",
       "tagline": "Where the men live — bare, stark, functional",
-      "nodes": [
-        "\"It's mean here\" — Lennie",
-        "Contrast to the natural world",
-        "\"Whitewashed walls\"",
-        "\"Unpainted floor\"",
-        "Described as stark",
-        "Described in stark, utilitarian terms [p.9]"
+      "branches": [
+        {
+          "title": "Stark & bare",
+          "nodes": [
+            "\"Whitewashed walls\"",
+            "\"Unpainted floor\"",
+            "Described as stark",
+            "Described in stark, utilitarian terms [p.9]"
+          ],
+          "extra": [
+            "\"Over each bunk there was nailed an apple box\" — a man's whole life fits on two shelves"
+          ]
+        },
+        {
+          "title": "Contrast",
+          "nodes": [
+            "Contrast to the natural world",
+            "\"It's mean here\" — Lennie"
+          ],
+          "extra": [
+            "No privacy and no comfort — the men are treated as tools for work, like the building itself"
+          ]
+        },
+        {
+          "title": "Life inside",
+          "extra": [
+            "The men sit in silence in the bunkhouse waiting for the shot that kills Candy's dog",
+            "Cards, magazines and talk of town fill the evenings — a lonely, temporary life"
+          ]
+        },
+        {
+          "title": "Context",
+          "extra": [
+            "★ Bunkhouses housed migrant workers for a season at a time — nobody stayed long enough to belong"
+          ]
+        }
+      ],
+      "links": [
+        [
+          "Contrast to the natural world",
+          "No privacy and no comfort"
+        ],
+        [
+          "Described as stark",
+          "★ Bunkhouses housed"
+        ]
       ],
       "bookPage": "15"
+    }
+  ],
+  "famousQuotes": [
+    {
+      "quote": "An' live off the fatta the lan'.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "1",
+      "shows": "Lennie finishes George's dream speech — the farm is his favourite story.",
+      "also": "fat of the land live off dream farm rabbits"
+    },
+    {
+      "quote": "I remember about the rabbits, George.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "1",
+      "shows": "He forgets almost everything, but never the dream.",
+      "also": "rabbits dream memory"
+    },
+    {
+      "quote": "Because I got you to look after me, and you got me to look after you, and that's why.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "1",
+      "shows": "Their friendship makes them different from every other ranch worker.",
+      "also": "friendship companionship look after"
+    },
+    {
+      "quote": "If you don' want me I can go off in the hills an' find a cave. I can go away any time.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "1",
+      "shows": "A childlike threat to run away — he relies completely on George.",
+      "also": "cave hills run away"
+    },
+    {
+      "quote": "I like to pet nice things with my fingers, sof' things.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "5",
+      "shows": "Said to Curley's wife just before he kills her — his obsession with soft things turns deadly.",
+      "also": "soft petting stroke hair"
+    },
+    {
+      "quote": "You ain't so little as mice.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "5",
+      "shows": "Talking to the puppy he has just killed — he doesn't understand his own strength.",
+      "also": "puppy pup dead mice"
+    },
+    {
+      "quote": "a huge man, shapeless of face, with large, pale eyes, with wide, sloping shoulders",
+      "who": "Narrator",
+      "about": "lennie",
+      "chapter": "1",
+      "shows": "Our first sight of Lennie — big, slow and shapeless, the opposite of George.",
+      "also": "description appearance"
+    },
+    {
+      "quote": "Le's do it now. Le's get that place now.",
+      "who": "Lennie",
+      "about": "lennie",
+      "chapter": "6",
+      "shows": "His last words about the dream, just before George shoots him.",
+      "also": "ending death farm"
+    },
+    {
+      "quote": "Guys like us, that work on ranches, are the loneliest guys in the world. They got no family. They don't belong no place.",
+      "who": "George",
+      "about": "george",
+      "chapter": "1",
+      "shows": "The loneliness of migrant workers — and why George and Lennie are different.",
+      "also": "loneliness lonely migrant workers belong"
+    },
+    {
+      "quote": "With us it ain't like that. We got a future. We got somebody to talk to that gives a damn about us.",
+      "who": "George",
+      "about": "george",
+      "chapter": "1",
+      "shows": "Friendship gives them hope that other workers don't have.",
+      "also": "friendship future hope"
+    },
+    {
+      "quote": "The first man was small and quick, dark of face, with restless eyes and sharp, strong features.",
+      "who": "Narrator",
+      "about": "george",
+      "chapter": "1",
+      "shows": "George's first description — everything about him is sharp and alert.",
+      "also": "description appearance"
+    },
+    {
+      "quote": "An' it'd be our own, an' nobody could can us.",
+      "who": "George",
+      "about": "george",
+      "chapter": "3",
+      "shows": "The dream is about security and freedom — nobody could sack them.",
+      "also": "dream farm own land fired sacked"
+    },
+    {
+      "quote": "I seen the guys that go around on the ranches alone. That ain't no good. They don't have no fun. After a long time they get mean.",
+      "who": "George",
+      "about": "george",
+      "chapter": "3",
+      "shows": "George admits he needs Lennie as much as Lennie needs him.",
+      "also": "loneliness alone mean"
+    },
+    {
+      "quote": "I think I knowed from the very first. I think I knowed we'd never do her.",
+      "who": "George",
+      "about": "george",
+      "chapter": "5",
+      "shows": "With Lennie in trouble, the dream dies — maybe it was never real.",
+      "also": "dream dies never"
+    },
+    {
+      "quote": "No, Lennie. I ain't mad. I never been mad, an' I ain't now. That's a thing I want ya to know.",
+      "who": "George",
+      "about": "george",
+      "chapter": "6",
+      "shows": "George's kindness in Lennie's final moments.",
+      "also": "ending death mad"
+    },
+    {
+      "quote": "Sure, right now. I gotta. We gotta.",
+      "who": "George",
+      "about": "george",
+      "chapter": "6",
+      "shows": "George's reply as he prepares to shoot Lennie — he has no choice.",
+      "also": "ending shoot"
+    },
+    {
+      "quote": "I seen 'em poison before, but I never seen no piece of jail bait worse than her.",
+      "who": "George",
+      "about": "wife",
+      "chapter": "2",
+      "shows": "George judges Curley's wife the moment he sees her.",
+      "also": "jail bait poison prejudice"
+    },
+    {
+      "quote": "I ought to of shot that dog myself, George. I shouldn't ought to of let no stranger shoot my dog.",
+      "who": "Candy",
+      "about": "candy",
+      "chapter": "3",
+      "shows": "Foreshadows George shooting Lennie himself in Chapter 6.",
+      "also": "dog shot foreshadowing stranger"
+    },
+    {
+      "quote": "When they can me here I wisht somebody'd shoot me.",
+      "who": "Candy",
+      "about": "candy",
+      "chapter": "3",
+      "shows": "He fears being thrown away like his old dog.",
+      "also": "old age fired canned shoot"
+    },
+    {
+      "quote": "S'pose I went in with you guys. Tha's three hundred an' fifty bucks I'd put in.",
+      "who": "Candy",
+      "about": "candy",
+      "chapter": "3",
+      "shows": "Candy's savings suddenly make the dream possible.",
+      "also": "dream money 350 farm"
+    },
+    {
+      "quote": "If you want me to, I'll put the old devil out of his misery right now and get it over with.",
+      "who": "Carlson",
+      "about": "candy",
+      "chapter": "3",
+      "shows": "Carlson about Candy's dog — the ranch has no room for the old and weak.",
+      "also": "carlson dog shoot misery"
+    },
+    {
+      "quote": "Books ain't no good. A guy needs somebody—to be near him. A guy goes nuts if he ain't got nobody.",
+      "who": "Crooks",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "Loneliness drives people mad — Crooks has nobody.",
+      "also": "loneliness lonely nuts"
+    },
+    {
+      "quote": "Nobody never gets to heaven, and nobody gets no land. It's just in their head.",
+      "who": "Crooks",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "He's seen hundreds of men with the same dream — none of them got it.",
+      "also": "dream land heaven"
+    },
+    {
+      "quote": "I ain't wanted in the bunk house, and you ain't wanted in my room.",
+      "who": "Crooks",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "Crooks is shut out because of racism, so he shuts others out too.",
+      "also": "racism isolation room"
+    },
+    {
+      "quote": "'Cause I'm black. They play cards in there, but I can't play because I'm black. They say I stink.",
+      "who": "Crooks",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "Racism keeps Crooks apart from the other men.",
+      "also": "racism cards black stink"
+    },
+    {
+      "quote": "Crooks was a proud, aloof man. He kept his distance and demanded that other people keep theirs.",
+      "who": "Narrator",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "His pride is a defence against the racism around him.",
+      "also": "proud aloof distance"
+    },
+    {
+      "quote": "Crooks had reduced himself to nothing. There was no personality, no ego—nothing to arouse either like or dislike.",
+      "who": "Narrator",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "After Curley's wife's threat he makes himself invisible to survive.",
+      "also": "threat nothing ego"
+    },
+    {
+      "quote": "Jus' foolin'. I wouldn' want to go no place like that.",
+      "who": "Crooks",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "He gives up the dream as quickly as he hoped for it.",
+      "also": "dream foolin farm"
+    },
+    {
+      "quote": "His glance was at once calculating and pugnacious.",
+      "who": "Narrator",
+      "about": "curley",
+      "chapter": "2",
+      "shows": "Curley is sizing people up for a fight from the moment we meet him.",
+      "also": "pugnacious aggressive glance"
+    },
+    {
+      "quote": "Curley's like a lot of little guys. He hates big guys.",
+      "who": "Candy",
+      "about": "curley",
+      "chapter": "2",
+      "shows": "Curley's aggression comes from insecurity about his size.",
+      "also": "little small big guys"
+    },
+    {
+      "quote": "Curley was flopping like a fish on a line, and his closed fist was lost in Lennie's big hand.",
+      "who": "Narrator",
+      "about": "curley",
+      "chapter": "3",
+      "shows": "The bully is helpless — the same simile returns when Curley's wife dies.",
+      "also": "fight hand fish simile"
+    },
+    {
+      "quote": "I'm gonna shoot the guts outa that big bastard myself, even if I only got one hand.",
+      "who": "Curley",
+      "about": "curley",
+      "chapter": "5",
+      "shows": "Curley wants revenge more than he grieves for his wife.",
+      "also": "revenge shoot lennie hand"
+    },
+    {
+      "quote": "Both men glanced up, for the rectangle of sunshine in the doorway was cut off.",
+      "who": "Narrator",
+      "about": "wife",
+      "chapter": "2",
+      "shows": "She enters by blocking out the light — a hint of the danger she brings.",
+      "also": "entrance doorway sunshine light"
+    },
+    {
+      "quote": "She had full, rouged lips and wide-spaced eyes, heavily made up. Her fingernails were red.",
+      "who": "Narrator",
+      "about": "wife",
+      "chapter": "2",
+      "shows": "Red and make-up mark her out as dangerous and flirtatious.",
+      "also": "appearance red make up"
+    },
+    {
+      "quote": "Nobody can't blame a person for lookin'.",
+      "who": "Curley's wife",
+      "about": "wife",
+      "chapter": "2",
+      "shows": "Her excuse for hanging around the men — she's looking for company.",
+      "also": "looking flirting"
+    },
+    {
+      "quote": "Standin' here talkin' to a bunch of bindle stiffs—a [n-word] an' a dum-dum and a lousy ol' sheep—an' likin' it because they ain't nobody else.",
+      "who": "Curley's wife",
+      "about": "wife",
+      "chapter": "4",
+      "shows": "She's left with only the 'weak ones' for company — and she knows it.",
+      "also": "saturday lonely bindle stiffs weak ones"
+    },
+    {
+      "quote": "I could get you strung up on a tree so easy it ain't even funny.",
+      "who": "Curley's wife",
+      "about": "crooks",
+      "chapter": "4",
+      "shows": "She threatens Crooks with lynching — race beats everything on the ranch.",
+      "also": "threat lynching tree"
+    },
+    {
+      "quote": "Why can't I talk to you? I never get to talk to nobody. I get awful lonely.",
+      "who": "Curley's wife",
+      "about": "wife",
+      "chapter": "5",
+      "shows": "Her loneliness, said out loud to Lennie.",
+      "also": "lonely loneliness talk"
+    },
+    {
+      "quote": "Coulda been in the movies, an' had nice clothes.",
+      "who": "Curley's wife",
+      "about": "wife",
+      "chapter": "5",
+      "shows": "Her own lost American Dream of Hollywood.",
+      "also": "movies hollywood dream clothes"
+    },
+    {
+      "quote": "I don' like Curley. He ain't a nice fella.",
+      "who": "Curley's wife",
+      "about": "wife",
+      "chapter": "5",
+      "shows": "She admits her marriage is unhappy.",
+      "also": "marriage curley"
+    },
+    {
+      "quote": "The meanness and the plannings and the discontent and the ache for attention were all gone from her face.",
+      "who": "Narrator",
+      "about": "wife",
+      "chapter": "5",
+      "shows": "In death she looks young and innocent — Steinbeck asks us to pity her.",
+      "also": "death dead face"
+    },
+    {
+      "quote": "He moved with a majesty only achieved by royalty and master craftsmen.",
+      "who": "Narrator",
+      "about": "slim",
+      "chapter": "2",
+      "shows": "Slim's natural authority — respected for skill, not money.",
+      "also": "majesty royalty authority"
+    },
+    {
+      "quote": "Ain't many guys travel around together… Maybe ever'body in the whole damn world is scared of each other.",
+      "who": "Slim",
+      "about": "slim",
+      "chapter": "2",
+      "shows": "Loneliness and mistrust are everywhere — friendship is rare.",
+      "also": "loneliness scared travel together"
+    },
+    {
+      "quote": "I can tell a mean guy from a mile off.",
+      "who": "Slim",
+      "about": "slim",
+      "chapter": "3",
+      "shows": "Slim judges Lennie fairly: he isn't mean.",
+      "also": "mean lennie judge"
+    },
+    {
+      "quote": "I wisht somebody'd shoot me if I got old an' a cripple.",
+      "who": "Slim",
+      "about": "slim",
+      "chapter": "3",
+      "shows": "Slim agrees Candy's dog should be shot — the harsh logic of the ranch.",
+      "also": "dog old cripple candy"
+    },
+    {
+      "quote": "You hadda, George. I swear you hadda.",
+      "who": "Slim",
+      "about": "slim",
+      "chapter": "6",
+      "shows": "Slim understands George's mercy killing.",
+      "also": "ending shot lennie"
+    },
+    {
+      "quote": "He wore high-heeled boots and spurs to prove he was not a laboring man.",
+      "who": "Narrator",
+      "about": "boss",
+      "chapter": "2",
+      "shows": "Clothes show status — he's above the workers.",
+      "also": "boots spurs status class"
+    },
+    {
+      "quote": "Well, I never seen one guy take so much trouble for another guy.",
+      "who": "The boss",
+      "about": "boss",
+      "chapter": "2",
+      "shows": "Friendship is so rare on the ranches that it looks suspicious.",
+      "also": "suspicious friendship"
+    },
+    {
+      "quote": "A few miles south of Soledad, the Salinas River drops in close to the hillside bank and runs deep and green.",
+      "who": "Narrator",
+      "about": "nature",
+      "chapter": "1",
+      "shows": "The opening — a calm, Eden-like place.",
+      "also": "opening river setting soledad salinas"
+    },
+    {
+      "quote": "A silent head and beak lanced down and plucked it out by the head, and the beak swallowed the little snake while its tail waved frantically.",
+      "who": "Narrator",
+      "about": "nature",
+      "chapter": "6",
+      "shows": "The heron kills the snake — foreshadows Lennie's death and shows nature's cruelty.",
+      "also": "heron snake chapter 6 foreshadowing"
+    },
+    {
+      "quote": "The bunk house was a long, rectangular building. Inside, the walls were whitewashed and the floor unpainted.",
+      "who": "Narrator",
+      "about": "bunkhouse",
+      "chapter": "2",
+      "shows": "Plain and functional — no comfort for the workers.",
+      "also": "bunkhouse description"
+    },
+    {
+      "quote": "Over each bunk there was nailed an apple box with the opening forward so that it made two shelves for the personal belongings of the occupant of the bunk.",
+      "who": "Narrator",
+      "about": "bunkhouse",
+      "chapter": "2",
+      "shows": "A worker's whole life fits in an apple box.",
+      "also": "apple box belongings"
+    },
+    {
+      "quote": "Now what the hell ya suppose is eatin' them two guys?",
+      "who": "Carlson",
+      "about": "themes",
+      "chapter": "6",
+      "shows": "The last line — Carlson can't understand friendship or grief.",
+      "also": "ending last line friendship carlson"
+    },
+    {
+      "quote": "The best laid schemes o' mice an' men / Gang aft agley",
+      "who": "Robert Burns, 'To a Mouse' (1785)",
+      "about": "themes",
+      "chapter": "Title",
+      "shows": "Where the title comes from: even the best plans go wrong — the dream was always doomed.",
+      "also": "title poem burns plans go wrong schemes"
     }
   ],
   "incidents": [

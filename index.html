@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/style.css?v=2026-10-07" />
 </head>
 <body>
   <a class="skip" href="#view">Skip to content</a>
@@ -62,7 +62,7 @@
   </main>
 
   <footer class="footer">
-    <p><span id="footer-author">Of Mice and Men — Revision Notes</span><span class="key"> · <mark class="hl is-on">"double quotes"</mark> = quotation from the novel · <span class="star">★</span> = context (AO4) · <span class="pref">Book p.X</span> = page of the exercise book</span></p>
+    <p><span id="footer-author">Of Mice and Men — Revision Notes</span><span class="key"> · <mark class="hl is-on">"double quotes"</mark> = quotation from the novel · <span class="star">★</span> = context (AO4) · <span class="pref">Book p.X</span> = page of the exercise book · <span class="tag tag--added">Not in my notes</span> = added, not from the book</span></p>
   </footer>
 
   <!-- ============================================================
@@ -122,9 +122,23 @@
     </form>
   </div>
 
+  <!-- ============================================================
+       ADD / EDIT A LEG (spider diagrams fill the screen, so the form opens on top)
+       ============================================================ -->
+  <div id="note-modal" class="overlay" hidden>
+    <div class="overlay__backdrop" data-close></div>
+    <div class="overlay__panel note-panel" role="dialog" aria-modal="true" aria-labelledby="note-modal-title">
+      <div class="quiz__head">
+        <span class="eyebrow" id="note-modal-title">Add a leg</span>
+        <button type="button" class="overlay__close" data-close aria-label="Close">×</button>
+      </div>
+      <div class="note-panel__body" data-note-host></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="assets/js/app.js"></script>
+  <script type="module" src="assets/js/app.js?v=2026-10-07"></script>
   <noscript><p class="noscript">This revision site needs JavaScript to open the notes.</p></noscript>
 </body>
 </html>

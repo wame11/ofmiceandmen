@@ -6,7 +6,7 @@
 
 import { firebaseConfig, DB_ROOT } from "./firebase-config.js";
 
-const DATA_URL = "data/of_mice_and_men_notes.json";
+const DATA_URL = "data/of_mice_and_men_notes.json?v=2026-10-07";
 const CACHE_KEY = "omam-notes-cache-v1";
 const FIREBASE_VERSION = "10.7.0";
 
@@ -58,6 +58,9 @@ const hasQuote = (t) => /["“][^"”]+["”]/.test(String(t ?? ""));
 const isContext = (t) => String(t ?? "").trim().startsWith("★");
 const firstQuote = (t) => { const m = String(t ?? "").match(/["“]([^"”]+)["”]/); return m ? m[1] : null; };
 const bookRef = (p) => (p ? `<span class="pref">Book p.${esc(p)}</span>` : "");
+const ADDED_TAG = '<span class="tag tag--added">Not in my notes</span>';
+// lower-case and straighten curly quotes/dashes one character for one, so match positions still line up
+const norm = (s) => String(s ?? "").toLowerCase().replace(/[‘’ʼ`´]/g, "'").replace(/[“”]/g, '"').replace(/[—–]/g, "-");
 
 /** Render a note string with the notebook conventions: "quotes" highlighted, ★ context, [p.X] → Book p.X */
 function fmt(text, { kind } = {}) {
@@ -201,21 +204,50 @@ function onNotesChanged() {
 // -----------------------------------------------------------------
 // Subjects (characters, settings, custom diagrams) share one shape
 // -----------------------------------------------------------------
+/** Branches of a character/setting in the JSON. A plain "nodes" list (older format) becomes one untitled branch. */
+function branchesOf(x) {
+  if (Array.isArray(x.branches)) return x.branches.map((b) => ({ title: String(b.title || ""), nodes: b.nodes || [], extra: b.extra || [] }));
+  return x.nodes && x.nodes.length ? [{ title: "", nodes: x.nodes, extra: [] }] : [];
+}
+
+/** Every leg from the JSON, flattened: notebook ones (n-…) then added ones (x-…), branch by branch */
+function legsOf(key, branches) {
+  const legs = [];
+  branches.forEach((b, bi) => {
+    b.nodes.forEach((t, i) => legs.push({ id: `n-${key}-${bi}-${i}`, text: t, added: false, branch: bi }));
+    b.extra.forEach((t, i) => legs.push({ id: `x-${key}-${bi}-${i}`, text: t, added: true, branch: bi }));
+  });
+  return legs;
+}
+
 function subjectFor(kind, id) {
   const d = state.data;
+  const fromData = (x, key, route) => {
+    const branches = branchesOf(x);
+    return { kind, id: x.id, key, name: x.name, tagline: x.tagline, bookPage: x.bookPage, branches, legs: legsOf(key, branches), links: x.links || [], colour: COLOURS[x.id] || MINE, mine: false, route };
+  };
   if (kind === "characters") {
     const c = d.characters.find((x) => x.id === id);
-    return c && { kind, id: c.id, key: `char_${c.id}`, name: c.name, tagline: c.tagline, bookPage: c.bookPage, nodes: c.nodes, colour: COLOURS[c.id] || MINE, mine: false, route: `#/characters/${c.id}` };
+    return c && fromData(c, `char_${c.id}`, `#/characters/${c.id}`);
   }
   if (kind === "settings") {
     const s = d.settings.find((x) => x.id === id);
-    return s && { kind, id: s.id, key: `setting_${s.id}`, name: s.name, tagline: s.tagline, bookPage: s.bookPage, nodes: s.nodes, colour: COLOURS[s.id] || MINE, mine: false, route: `#/settings/${s.id}` };
+    return s && fromData(s, `setting_${s.id}`, `#/settings/${s.id}`);
   }
   if (kind === "diagram") {
     const g = state.diagrams[id];
-    return g && { kind, id, key: `diagram_${id}`, name: g.name, tagline: g.tagline || "", bookPage: g.bookPage || "", nodes: [], colour: safeColour(g.colour), mine: true, route: `#/diagram/${id}` };
+    return g && { kind, id, key: `diagram_${id}`, name: g.name, tagline: g.tagline || "", bookPage: g.bookPage || "", branches: [], legs: [], links: [], colour: safeColour(g.colour), mine: true, route: `#/diagram/${id}` };
   }
   return null;
+}
+
+const chapterLabel = (ch) => (/^\d+$/.test(String(ch)) ? `Chapter ${ch}` : String(ch));
+
+/** Name of whatever a famous quote is "about" (a character, a setting, or the novel's themes) */
+function aboutName(id) {
+  const d = state.data;
+  const x = d.characters.find((c) => c.id === id) || d.settings.find((s) => s.id === id);
+  return x ? x.name : "Themes & the title";
 }
 
 // -----------------------------------------------------------------
@@ -224,24 +256,19 @@ function subjectFor(kind, id) {
 function buildIndex() {
   const d = state.data;
   const idx = [];
-  const add = (o) => idx.push({ ...o, isQuote: o.kind === "quote" || hasQuote(o.text), isContext: o.kind === "context" || isContext(o.text), lc: String(o.text).toLowerCase() });
+  // `hidden` is extra text that can be searched but isn't shown (e.g. "fat of the land" for "fatta the lan'")
+  const add = (o) => idx.push({ ...o, isQuote: o.kind === "quote" || hasQuote(o.text), isContext: o.kind === "context" || isContext(o.text), lc: norm(`${o.text} ${o.sub || ""} ${o.hidden || ""}`) });
   const addMine = (target, route, section, group, colour) =>
     userNotes(target).forEach((n) => add({ id: `u-${n.id}`, route, section, group, text: n.text, kind: n.kind, mine: true, colour }));
 
   d.assessmentObjectives.forEach((ao) => ao.points.forEach((p, i) =>
     add({ id: `ao-${ao.ao}-${i}`, route: "#/exam", section: "Exam essentials", group: ao.ao, text: p, colour: COLOURS.boss })));
 
-  d.characters.forEach((c) => {
-    const route = `#/characters/${c.id}`;
-    c.nodes.forEach((t, i) => add({ id: `n-char_${c.id}-${i}`, route, section: "Characters", group: c.name, text: t, colour: COLOURS[c.id] }));
-    addMine(`char_${c.id}`, route, "Characters", c.name, COLOURS[c.id]);
-  });
-
-  d.settings.forEach((s) => {
-    const route = `#/settings/${s.id}`;
-    s.nodes.forEach((t, i) => add({ id: `n-setting_${s.id}-${i}`, route, section: "Settings", group: s.name, text: t, colour: COLOURS[s.id] }));
-    addMine(`setting_${s.id}`, route, "Settings", s.name, COLOURS[s.id]);
-  });
+  [["characters", "Characters"], ["settings", "Settings"]].forEach(([kind, section]) => d[kind].forEach((x) => {
+    const s = subjectFor(kind, x.id);
+    s.legs.forEach((leg) => add({ id: leg.id, route: s.route, section, group: s.name, text: leg.text, added: leg.added, hidden: s.branches[leg.branch].title, colour: s.colour }));
+    addMine(s.key, s.route, section, s.name, s.colour);
+  }));
 
   customDiagrams().forEach((g) => addMine(`diagram_${g.id}`, `#/diagram/${g.id}`, "My diagrams", g.name, safeColour(g.colour)));
 
@@ -269,6 +296,12 @@ function buildIndex() {
     }
     addMine(`para_${p.id}`, route, "Paragraphs", p.title, COLOURS.george);
   });
+
+  (d.famousQuotes || []).forEach((q, i) => add({
+    id: `fq-${i}`, route: "#/notes/famous", section: "Famous quotes", group: aboutName(q.about), famous: true, added: true,
+    text: `"${q.quote}"`, sub: `${q.who}${q.chapter ? `, ${chapterLabel(q.chapter)}` : ""}`,
+    hidden: `${q.shows || ""} ${q.also || ""}`, shows: q.shows, colour: COLOURS[q.about] || COLOURS.boss,
+  }));
 
   state.index = idx;
 }
@@ -364,6 +397,7 @@ function render({ animate = true } = {}) {
   }
 
   view.innerHTML = html;
+  view.classList.toggle("view--wide", !!$(".spider", view));
   document.title = `${title} · Of Mice and Men`;
   afterRender(animate);
 }
@@ -375,14 +409,15 @@ function renderNotFound() {
 // ---------- home / cover ----------
 function renderHome() {
   const d = state.data;
-  const quoteCount = state.index.filter((i) => i.isQuote).length;
+  const quoteCount = state.index.filter((i) => i.isQuote && !i.added && !i.mine).length;
+  const famousCount = state.index.filter((i) => i.famous).length;
   const mineCount = state.index.filter((i) => i.mine).length;
   const cards = [
     { href: "#/exam", num: "01", title: "Exam essentials", text: "AO1–AO4 and context at a glance.", count: `${d.assessmentObjectives.length} assessment objectives`, c: COLOURS.boss },
     { href: "#/characters", num: "02", title: "Characters", text: "A spider diagram for every character.", count: `${d.characters.length} characters${customDiagrams().length ? ` · ${customDiagrams().length} of mine` : ""}`, c: COLOURS.curley },
     { href: "#/settings", num: "03", title: "Settings", text: "The natural world and the bunkhouse.", count: `${d.settings.length} settings`, c: COLOURS.nature },
     { href: "#/incidents", num: "04", title: "Incidents", text: "Key moments, what happens and why it matters.", count: `${d.incidents.length} incidents`, c: COLOURS.wife },
-    { href: "#/notes", num: "05", title: "Notes & Quotes", text: "The notebook pages, quote by quote.", count: `${d.notesAndQuotes.length} pages`, c: COLOURS.lennie },
+    { href: "#/notes", num: "05", title: "Notes & Quotes", text: "The notebook pages, quote by quote.", count: `${d.notesAndQuotes.length} pages${famousCount ? ` · ${famousCount} famous quotes` : ""}`, c: COLOURS.lennie },
     { href: "#/paragraphs", num: "06", title: "Paragraphs", text: "Model paragraphs with teacher feedback.", count: `${d.paragraphs.length} paragraphs`, c: COLOURS.george },
   ];
   return `
@@ -427,8 +462,9 @@ function renderHome() {
         <li><span class="star">★</span> ${esc(d.conventions.context.replace("Items starting with ★ are", "=").trim())}</li>
         <li><span class="pref" style="margin:0">Book p.X</span> ${esc(d.conventions.bookRef.replace("[p.X] =", "=").trim())}</li>
         <li><span class="swatch"></span> notes in blue are ones you've added yourself</li>
+        <li>${ADDED_TAG} = added to help revision, not from the exercise book</li>
       </ul>
-      <p class="form__hint" style="margin-top:12px">${quoteCount} quotations across the notebook${mineCount ? ` · ${mineCount} note${mineCount === 1 ? "" : "s"} of your own` : ""}.</p>
+      <p class="form__hint" style="margin-top:12px">${quoteCount} quotations across the notebook${famousCount ? ` · ${famousCount} more famous quotes in search` : ""}${mineCount ? ` · ${mineCount} note${mineCount === 1 ? "" : "s"} of your own` : ""}.</p>
     </section>`;
 }
 
@@ -457,14 +493,14 @@ function renderExam() {
       ${ctx.map((it) => `
         <button type="button" class="card card--link context-item hl-watch" data-action="jump" data-route="${attr(it.route)}" data-id="${attr(it.id)}" style="--c:${it.colour || MINE}">
           <span class="star">★</span>
-          <span>${fmt(it.text.replace(/^★\s*/, ""))}<span class="context-item__src">${it.mine ? '<span class="tag tag--mine">Mine</span> ' : ""}${esc(it.section)} · <b style="color:${it.mine ? MINE : it.colour}">${esc(it.group)}</b></span></span>
+          <span>${fmt(it.text.replace(/^★\s*/, ""))}<span class="context-item__src">${it.mine ? '<span class="tag tag--mine">Mine</span> ' : ""}${it.added ? `${ADDED_TAG} ` : ""}${esc(it.section)} · <b style="color:${it.mine ? MINE : it.colour}">${esc(it.group)}</b></span></span>
         </button>`).join("")}
     </div>`;
 }
 
 // ---------- characters + settings indexes ----------
 function subjectCard(s) {
-  const n = s.nodes.length + userNotes(s.key).length;
+  const n = s.legs.length + userNotes(s.key).length;
   return `
     <a class="card card--link card--c char-card hl-watch ${s.mine ? "char-card--mine" : ""}" href="${s.route}" style="--c:${s.colour}">
       <span class="char-card__name">${esc(s.name)}</span>
@@ -509,15 +545,65 @@ function renderSettingsIndex() {
 }
 
 // ---------- spider diagram page ----------
-function mineControls(target, id, kind) {
+function noteTools(target, id) {
   return `
-    <span class="tag tag--mine">Mine</span><span>${esc(KINDS[kind] || "Point")}</span><span class="spacer"></span>
     <button type="button" class="icon-btn" data-action="edit-note" data-target="${attr(target)}" data-id="${attr(id)}" aria-label="Edit this note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14.5V17h2.5L15 7.5 12.5 5zM13.8 3.7l2.5 2.5 1.2-1.2a1 1 0 0 0 0-1.4L16.4 2.5a1 1 0 0 0-1.4 0z" fill="currentColor"/></svg></button>
     <button type="button" class="icon-btn icon-btn--danger" data-action="delete-note" data-target="${attr(target)}" data-id="${attr(id)}" aria-label="Delete this note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h10l-.8 11H5.8zM8 3h4l.5 2h-5zM3 5h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg></button>`;
 }
 
+function mineControls(target, id, kind) {
+  return `<span class="tag tag--mine">Mine</span><span>${esc(KINDS[kind] || "Point")}</span><span class="spacer"></span>${noteTools(target, id)}`;
+}
+
 function addButton(target, label = "Add a note, quote or point") {
   return `<div class="mine-area" data-mine-area="${attr(target)}"><button type="button" class="add-btn" data-action="add-note" data-target="${attr(target)}"><span class="plus">+</span>${esc(label)}</button></div>`;
+}
+
+function subjectForKey(key) {
+  const m = /^(char|setting|diagram)_(.+)$/.exec(key || "");
+  return m ? subjectFor({ char: "characters", setting: "settings", diagram: "diagram" }[m[1]], m[2]) : null;
+}
+
+/** The cards drawn round the hub: one per branch, with your own notes added to the branch you picked
+    (or to a blue card of their own) */
+function spiderCards(s) {
+  const cards = s.branches.map((b, bi) => ({ title: b.title, mine: false, items: s.legs.filter((l) => l.branch === bi) }));
+  const byTitle = new Map(cards.filter((c) => c.title).map((c) => [norm(c.title.trim()), c]));
+  userNotes(s.key).forEach((n) => {
+    const name = String(n.branch || "").trim() || "My notes";
+    let card = byTitle.get(norm(name));
+    if (!card) { card = { title: name, mine: true, items: [] }; cards.push(card); byTitle.set(norm(name), card); }
+    card.items.push({ id: `u-${n.id}`, text: n.text, kind: n.kind, mine: true, noteId: n.id });
+  });
+  return cards.filter((c) => c.items.length);
+}
+
+/** Rough size of a card, by how much text it holds */
+const cardWeight = (c) => 1.5 + c.items.reduce((t, it) => t + 0.45 + String(it.text).length / 52, 0);
+
+/** Share cards (given by weight) between the left and right columns; the smallest `nMid` of them sit
+    above and below the hub instead. Returns indexes. */
+function planCards(weights, nMid) {
+  const all = weights.map((w, i) => ({ w, i }));
+  const mid = all.slice().sort((a, b) => a.w - b.w).slice(0, nMid).sort((a, b) => a.i - b.i).map((o) => o.i);
+  const left = [], right = [];
+  let wl = 0, wr = 0;
+  all.filter((o) => !mid.includes(o.i)).forEach((o) => { if (wl <= wr) { left.push(o.i); wl += o.w; } else { right.push(o.i); wr += o.w; } });
+  return { left, right, top: mid[0] ?? null, bottom: mid[1] ?? null };
+}
+
+function placeCards(cards) {
+  const plan = planCards(cards.map(cardWeight), cards.length >= 6 ? 2 : cards.length === 5 ? 1 : 0);
+  return { left: plan.left.map((i) => cards[i]), right: plan.right.map((i) => cards[i]), top: cards[plan.top] || null, bottom: cards[plan.bottom] || null };
+}
+
+/** links in the JSON name each end by a snippet of its text */
+function resolveLinks(s, cards) {
+  const items = cards.flatMap((c) => c.items.filter((it) => !it.mine));
+  const find = (snip) => items.find((it) => String(it.text).includes(snip));
+  const out = [];
+  s.links.forEach(([a, b]) => { const A = find(a), B = find(b); if (A && B && A !== B) out.push([A.id, B.id]); });
+  return out;
 }
 
 function renderSpiderPage(s) {
@@ -527,46 +613,68 @@ function renderSpiderPage(s) {
     : [...d.characters.map((x) => subjectFor("characters", x.id)), ...customDiagrams().map((g) => subjectFor("diagram", g.id))];
   const backHref = s.kind === "settings" ? "#/settings" : "#/characters";
   const backLabel = s.kind === "settings" ? "Settings" : "Characters";
-  const mine = userNotes(s.key);
-  const total = s.nodes.length + mine.length;
 
-  const nodeHtml = (i, inner, extra = "", id = "") => `
-    <div class="node hl-watch ${extra}" id="${id}" style="--i:${i}" data-i="${i}" data-side="${i % 2 === 0 ? "left" : "right"}">${inner}</div>`;
+  const cards = spiderCards(s);
+  const links = resolveLinks(s, cards);
+  const linksOf = new Map();
+  links.forEach((pair, k) => pair.forEach((id) => linksOf.set(id, [...(linksOf.get(id) || []), k])));
+  const total = cards.reduce((t, c) => t + c.items.length, 0);
+  const items = cards.flatMap((c) => c.items);
+  const place = placeCards(cards);
 
-  const items = [
-    ...s.nodes.map((t, i) => nodeHtml(i, fmt(t), isContext(t) ? "node--ctx" : "", `n-${s.key}-${i}`)),
-    ...mine.map((n, j) => nodeHtml(s.nodes.length + j,
-      `<div class="node__body">${fmt(n.text, { kind: n.kind })}</div><div class="node__mine-row">${mineControls(s.key, n.id, n.kind)}</div>`,
-      "node--mine", `u-${n.id}`)),
-  ];
-  const left = items.filter((_, i) => i % 2 === 0).join("");
-  const right = items.filter((_, i) => i % 2 === 1).join("");
+  const pt = (it) => {
+    const ln = linksOf.get(it.id);
+    const cls = ["pt", it.kind === "context" || isContext(it.text) ? "pt--ctx" : "", it.added ? "pt--added" : "", it.mine ? "pt--mine" : "", ln ? "pt--linked" : ""].filter(Boolean).join(" ");
+    return `<li class="${cls}" id="${attr(it.id)}"${ln ? ` data-links="${ln.join(" ")}" tabindex="0"` : ""}${it.added ? ' title="Not in my notes — added to help revision"' : ""}><span class="pt__text">${fmt(it.text, { kind: it.kind })}</span>${it.mine ? `<span class="pt__tools">${noteTools(s.key, it.noteId)}</span>` : ""}</li>`;
+  };
+  let ci = 0;
+  const card = (c, side) => (c ? `
+    <article class="branch hl-watch ${c.mine ? "branch--mine" : ""}" data-side="${side}" data-i="${ci}" data-order="${cards.indexOf(c)}" data-w="${cardWeight(c).toFixed(2)}" style="--i:${ci++}">
+      <h3 class="branch__title"><span>${esc(c.title || "Notes")}</span>${c.mine ? '<span class="tag tag--mine">Mine</span>' : ""}</h3>
+      <ul class="branch__pts">${c.items.map(pt).join("")}</ul>
+    </article>` : "");
+
+  const left = place.left.map((c) => card(c, "left")).join("");
+  const top = card(place.top, "top");
+  const bottom = card(place.bottom, "bottom");
+  const right = place.right.map((c) => card(c, "right")).join("");
 
   return `
-    <div class="page-head">
-      <div><a class="eyebrow" href="${backHref}">← ${backLabel}</a><h1 style="color:${s.colour}">${esc(s.name)}</h1></div>
+    <div class="spider-head">
+      <a class="eyebrow" href="${backHref}">← ${backLabel}</a>
+      <nav class="subnav" aria-label="Other ${backLabel.toLowerCase()}">
+        ${siblings.map((x) => `<a class="chip chip--c ${x.key === s.key ? "is-active" : ""}" href="${x.route}" style="--c:${x.colour}">${esc(x.name)}</a>`).join("")}
+      </nav>
       <div class="page-actions">
+        <button type="button" class="btn btn--mine btn--small" data-action="add-note" data-target="${attr(s.key)}">+ Add a leg</button>
         ${s.mine ? `<button type="button" class="btn btn--ghost btn--small" data-action="delete-diagram" data-id="${attr(s.id)}">Delete diagram</button>` : ""}
         <button type="button" class="btn btn--ghost btn--small" data-action="print">Print</button>
       </div>
-      <p class="lede">${esc(s.tagline || "")}${total ? ` <span class="form__hint" style="display:inline">· ${total} point${total === 1 ? "" : "s"}</span>` : ""}</p>
     </div>
-    <nav class="subnav" aria-label="Other ${backLabel.toLowerCase()}">
-      ${siblings.map((x) => `<a class="chip chip--c ${x.key === s.key ? "is-active" : ""}" href="${x.route}" style="--c:${x.colour}">${esc(x.name)}</a>`).join("")}
-    </nav>
-    <section class="spider ${s.mine ? "spider--mine" : ""}" style="--c:${s.colour}" data-key="${attr(s.key)}">
+    <section class="spider ${s.mine ? "spider--mine" : ""}" style="--c:${s.colour}" data-key="${attr(s.key)}" data-links="${attr(JSON.stringify(links))}">
       <div class="spider__canvas">
         <svg class="spider__legs" aria-hidden="true"></svg>
         <div class="spider__col spider__col--left">${left}</div>
-        <div class="spider__hub">
-          <h2>${esc(s.name)}</h2>
-          ${s.tagline ? `<p>${esc(s.tagline)}</p>` : ""}
-          ${s.bookPage ? bookRef(s.bookPage) : (s.mine ? '<span class="tag tag--mine">My diagram</span>' : "")}
+        <div class="spider__col spider__col--mid">
+          <div class="spider__slot">${top}</div>
+          <div class="spider__hub">
+            <h1 class="spider__name">${esc(s.name)}</h1>
+            ${s.tagline ? `<p>${esc(s.tagline)}</p>` : ""}
+            <div class="spider__meta">${s.bookPage ? bookRef(s.bookPage) : (s.mine ? '<span class="tag tag--mine">My diagram</span>' : "")}<span>${total} leg${total === 1 ? "" : "s"}</span></div>
+          </div>
+          <div class="spider__slot">${bottom}</div>
         </div>
         <div class="spider__col spider__col--right">${right}</div>
+        <svg class="spider__pins" aria-hidden="true"></svg>
       </div>
-      ${total === 0 ? `<p class="form__hint" style="text-align:center;margin-top:16px">This diagram is empty — add your first leg below.</p>` : ""}
-      <div class="spider__add">${addButton(s.key, "Add a leg: note, quote or context")}</div>
+      ${total === 0 ? `<p class="form__hint spider__empty">This diagram is empty — press <b>+ Add a leg</b> to start it.</p>` : ""}
+      <div class="spider__key">
+        ${items.some((it) => !it.added && !it.mine) ? "<span><i class=\"k-dot\"></i>from my notes</span>" : ""}
+        ${items.some((it) => it.added) ? "<span><i class=\"k-ring\"></i>added — not in my notes</span>" : ""}
+        ${items.some((it) => it.mine) ? "<span><i class=\"k-mine\"></i>added by me</span>" : ""}
+        ${items.some((it) => it.kind === "context" || isContext(it.text)) ? '<span><span class="star">★</span>context</span>' : ""}
+        ${links.length ? "<span><i class=\"k-link\"></i>linked points — point at one to trace its link</span>" : ""}
+      </div>
     </section>`;
 }
 
@@ -617,16 +725,32 @@ function renderNotes() {
         ${addButton(target)}
       </section>`;
   };
+  const famous = new Map();
+  (d.famousQuotes || []).forEach((q, i) => { if (!famous.has(q.about)) famous.set(q.about, []); famous.get(q.about).push({ ...q, i }); });
   return `
     <div class="page-head">
       <div><span class="eyebrow">Section 05</span><h1>Notes &amp; Quotes</h1></div>
-      <p class="lede">The notebook pages as written — quotations highlighted, ★ for context.</p>
+      <p class="lede">The notebook pages as written — quotations highlighted, ★ for context${famous.size ? ` — then <a href="#/notes/famous">famous quotes</a> that aren't in the book` : ""}.</p>
     </div>
     <div class="timeline">
       ${d.notesAndQuotes.map((pg) => pageCard(`nq-${pg.page}`, esc(pg.title), bookRef(pg.page),
         pg.items.map((t, i) => `<li id="nq-${attr(pg.page)}-${i}" class="${isContext(t) ? "is-ctx" : ""}">${fmt(t)}</li>`).join(""),
         `notes_${pg.page}`)).join("")}
       ${pageCard("nq-mine", "My own notes", '<span class="tag tag--mine">Mine</span>', "", "notes_mine")}
+      ${famous.size ? `
+        <section class="card notes-page famous" id="nq-famous">
+          <div class="card__title"><h2>Famous quotes</h2>${ADDED_TAG}</div>
+          <p class="card__meta">Well-known lines from the novel that aren't in the exercise book. They come up in search too, marked <b>Not in my notes</b>.</p>
+          <div class="famous__groups">
+            ${[...famous].map(([about, qs]) => `
+              <div class="famous__group hl-watch" style="--c:${COLOURS[about] || COLOURS.boss}">
+                <h3>${esc(aboutName(about))}</h3>
+                <ul class="notes-list">
+                  ${qs.map((q) => `<li id="fq-${q.i}" class="famous__q"><mark class="hl">“${esc(q.quote)}”</mark> <span class="famous__who">— ${esc(q.who)}${q.chapter ? `, ${esc(chapterLabel(q.chapter))}` : ""}</span>${q.shows ? `<span class="famous__shows">${esc(q.shows)}</span>` : ""}</li>`).join("")}
+                </ul>
+              </div>`).join("")}
+          </div>
+        </section>` : ""}
     </div>`;
 }
 
@@ -664,6 +788,7 @@ function renderParagraphs() {
 // After render: spider layout, highlighter swipes
 // -----------------------------------------------------------------
 const spiders = new Map(); // section -> { ro, timer }
+const FS_MIN = 10.5, FS_MAX = 16.5; // px: the diagram's text shrinks between these to fit one screen
 
 function afterRender(animate) {
   spiders.forEach((v) => { v.ro.disconnect(); clearTimeout(v.timer); });
@@ -679,7 +804,7 @@ function afterRender(animate) {
       const el = e.target;
       io.unobserve(el);
       const spider = el.closest(".spider.is-drawing");
-      const delay = spider && el.classList.contains("node") ? Number(el.dataset.i || 0) * 55 + 420 : 60;
+      const delay = spider && el.classList.contains("branch") ? Number(el.dataset.i || 0) * 90 + 420 : 60;
       setTimeout(() => el.classList.add("is-in"), delay);
     });
   }, { threshold: 0.15, rootMargin: "0px 0px -5% 0px" });
@@ -687,66 +812,219 @@ function afterRender(animate) {
 }
 
 function setupSpider(section, animate) {
-  const nodes = $$(".node", section);
+  const cards = $$(".branch", section);
   if (animate) section.classList.add("is-drawing");
   layoutSpider(section, true);
 
-  const ro = new ResizeObserver(() => layoutSpider(section, false));
-  ro.observe($(".spider__canvas", section));
-  const timer = setTimeout(() => {
-    section.classList.remove("is-drawing");
+  let width = section.offsetWidth;
+  const ro = new ResizeObserver(() => {
+    if (section.offsetWidth === width) return;
+    width = section.offsetWidth;
     layoutSpider(section, false);
-  }, animate ? 260 + nodes.length * 55 + 650 : 0);
+  });
+  ro.observe(section);
+  const timer = setTimeout(() => section.classList.remove("is-drawing"), animate ? 300 + cards.length * 90 + 900 : 0);
   spiders.set(section, { ro, timer });
+}
+
+function relayoutSpiders() {
+  cancelAnimationFrame(relayoutSpiders.raf);
+  relayoutSpiders.raf = requestAnimationFrame(() => $$(".spider").forEach((s) => layoutSpider(s, false)));
 }
 
 function layoutSpider(section, build) {
   const canvas = $(".spider__canvas", section);
-  const svg = $(".spider__legs", section);
-  const hub = $(".spider__hub", section);
-  const nodes = $$(".node", section);
-  const narrow = NARROW.matches;
+  const legs = $(".spider__legs", section);
+  const pins = $(".spider__pins", section);
+  if (NARROW.matches) {
+    section.style.removeProperty("--fs");
+    canvas.style.height = "";
+    legs.innerHTML = pins.innerHTML = "";
+    delete legs.dataset.count;
+    return;
+  }
+  arrangeSpider(section, canvas);
+  drawSpider(section, canvas, legs, pins, build);
+}
 
-  ["left", "right"].forEach((side) => {
-    const col = nodes.filter((n) => n.dataset.side === side);
-    const mid = (col.length - 1) / 2;
-    col.forEach((el, j) => {
-      const t = col.length > 1 ? (j - mid) / mid : 0;
-      const dx = narrow ? 0 : Math.round(ARC * (1 - Math.sqrt(Math.max(0, 1 - t * t))));
-      el.style.setProperty("--dx", `${side === "left" ? dx : -dx}px`);
-    });
+/** Try 0, 1 or 2 cards above/below the hub, and a wider middle column, and keep whichever lets the
+    text be biggest (near-ties go to the more spider-like layouts with cards round the hub). */
+function arrangeSpider(section, canvas) {
+  const cards = $$(".branch", section).sort((a, b) => a.dataset.order - b.dataset.order);
+  const weights = cards.map((c) => Number(c.dataset.w) || 1);
+  const [left, mid, right] = $$(".spider__col", section);
+  const [slotTop, , slotBottom] = mid.children;
+  const options = [];
+  for (const nMid of [2, 1, 0]) {
+    if (nMid > 0 && cards.length - nMid < 2) continue;
+    if (nMid === 0 && cards.length > 8) continue;
+    (nMid ? ["clamp(220px, 30%, 470px)", "clamp(210px, 25%, 400px)"] : ["clamp(200px, 21%, 310px)"]).forEach((w) => options.push({ nMid, w }));
+  }
+  const apply = ({ nMid, w }) => {
+    const plan = planCards(weights, nMid);
+    canvas.style.setProperty("--mid", w);
+    const put = (col, idx, side) => idx.forEach((i) => { cards[i].dataset.side = side; col.appendChild(cards[i]); });
+    put(left, plan.left, "left");
+    put(right, plan.right, "right");
+    put(slotTop, plan.top === null ? [] : [plan.top], "top");
+    put(slotBottom, plan.bottom === null ? [] : [plan.bottom], "bottom");
+  };
+  let best = null;
+  options.forEach((o) => {
+    apply(o);
+    const fs = fitSpider(section, canvas);
+    if (!best || fs > best.fs + 0.35) best = { ...o, fs };
+  });
+  apply(best);
+  fitSpider(section, canvas);
+}
+
+/** Height a column needs. The middle column keeps the hub dead centre, so it needs room for its
+    bigger slot on both sides. */
+function columnHeight(col) {
+  const gap = parseFloat(getComputedStyle(col).rowGap) || 0;
+  if (col.classList.contains("spider__col--mid")) {
+    // the slots stretch to fill their rows, so measure the cards inside them
+    const [top, hub, bottom] = col.children;
+    const card = (slot) => (slot.firstElementChild ? slot.firstElementChild.offsetHeight : 0);
+    return hub.offsetHeight + 2 * Math.max(card(top), card(bottom)) + 2 * gap;
+  }
+  const kids = Array.from(col.children);
+  return kids.reduce((t, el) => t + el.offsetHeight, 0) + gap * Math.max(0, kids.length - 1);
+}
+
+/** Make the canvas fill the rest of the window and pick the biggest text size that still fits it */
+function fitSpider(section, canvas) {
+  const cols = $$(".spider__col", section);
+  const below = $$(".spider__key, .spider__empty", section).reduce((t, el) => t + el.offsetHeight + 8, 0) + 16;
+  const top = canvas.getBoundingClientRect().top + window.scrollY;
+  const avail = Math.max(440, Math.floor(window.innerHeight - top - below));
+  const cs = getComputedStyle(canvas);
+  const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const need = () => Math.max(...cols.map(columnHeight)) + pad;
+  const tryFs = (fs) => { section.style.setProperty("--fs", `${fs.toFixed(2)}px`); return need() <= avail; };
+
+  let best = FS_MIN;
+  if (tryFs(FS_MAX)) best = FS_MAX;
+  else {
+    let lo = FS_MIN, hi = FS_MAX;
+    for (let k = 0; k < 7; k++) { const mid = (lo + hi) / 2; if (tryFs(mid)) { best = mid; lo = mid; } else hi = mid; }
+  }
+  tryFs(best);
+  // too much to fit even at the smallest size (lots of your own notes): let the page scroll instead
+  canvas.style.height = `${Math.max(avail, Math.ceil(need()))}px`;
+  return need() <= avail ? best : best - (need() - avail) / 100;
+}
+
+/** Box of an element relative to the canvas, from layout offsets (so the pop-in animation's
+    transforms don't throw the legs off) */
+function boxIn(el, canvas) {
+  let x = 0, y = 0;
+  for (let e = el; e && e !== canvas; e = e.offsetParent) {
+    x += e.offsetLeft; y += e.offsetTop;
+    if (e.offsetParent && e.offsetParent !== canvas) { x += e.offsetParent.clientLeft; y += e.offsetParent.clientTop; }
+  }
+  return { l: x, t: y, r: x + el.offsetWidth, b: y + el.offsetHeight, w: el.offsetWidth, h: el.offsetHeight };
+}
+
+function drawSpider(section, canvas, legs, pins, build) {
+  const W = Math.max(1, canvas.clientWidth), H = Math.max(1, canvas.clientHeight);
+  legs.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  pins.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const cards = $$(".branch", section);
+  const links = JSON.parse(section.dataset.links || "[]");
+  const f = (n) => n.toFixed(1);
+
+  const count = `${cards.length}/${links.length}`;
+  if (legs.dataset.count !== count) {
+    legs.innerHTML =
+      cards.map((c, i) => `<path class="leg${c.classList.contains("branch--mine") ? " leg--mine" : ""}" style="--i:${i}" d="M0,0"/>`).join("") +
+      links.map((_, k) => `<path class="link" data-link="${k}" style="--i:${cards.length + k}" d="M0,0"/>`).join("");
+    pins.innerHTML =
+      links.map((_, k) => `<path class="link link--top" data-link="${k}" d="M0,0"/>`).join("") +
+      cards.map((c, i) => `<circle class="pin${c.classList.contains("branch--mine") ? " pin--mine" : ""}" style="--i:${i}" r="4"/>`).join("") +
+      links.map((_, k) => `<circle class="pin pin--link" data-link="${k}" style="--i:${cards.length + k}" r="3.5"/><circle class="pin pin--link" data-link="${k}" style="--i:${cards.length + k}" r="3.5"/>`).join("");
+    legs.dataset.count = count;
+    build = true;
+  }
+  const legPaths = $$(".leg", legs), linkPaths = $$(".link", legs), topPaths = $$(".link--top", pins);
+  const legPins = $$(".pin:not(.pin--link)", pins), linkPins = $$(".pin--link", pins);
+
+  const hub = boxIn($(".spider__hub", section), canvas);
+  const midCol = boxIn($(".spider__col--mid", section), canvas);
+  const cx = hub.l + hub.w / 2, cy = hub.t + hub.h / 2;
+
+  // legs: from inside the hub (it covers their start) out to each card's title
+  cards.forEach((card, i) => {
+    const r = boxIn(card, canvas);
+    const side = card.dataset.side;
+    let d, ax, ay;
+    if (side === "left" || side === "right") {
+      const tb = boxIn($(".branch__title", card), canvas);
+      ax = side === "left" ? r.r : r.l;
+      ay = tb.t + tb.h / 2;
+      // straight out of the hub to the edge of the middle column, then bend in the gap beside it,
+      // so legs never run behind the cards above and below the hub
+      const sx = side === "left" ? hub.l + hub.w * 0.22 : hub.r - hub.w * 0.22;
+      const gx = side === "left" ? midCol.l : midCol.r;
+      const sy = cy + Math.max(-hub.h * 0.3, Math.min(hub.h * 0.3, (ay - cy) * 0.3));
+      const mx = (gx + ax) / 2;
+      d = `M${f(sx)},${f(sy)} L${f(gx)},${f(sy)} C${f(mx)},${f(sy)} ${f(mx)},${f(ay)} ${f(ax)},${f(ay)}`;
+    } else {
+      ax = r.l + r.w / 2;
+      ay = side === "top" ? r.b : r.t;
+      const sy = side === "top" ? hub.t + hub.h * 0.3 : hub.b - hub.h * 0.3;
+      d = `M${f(cx)},${f(sy)} L${f(ax)},${f(ay)}`;
+    }
+    legPaths[i].setAttribute("d", d);
+    if (build) legPaths[i].style.setProperty("--len", legPaths[i].getTotalLength().toFixed(1));
+    legPins[i].setAttribute("cx", f(ax));
+    legPins[i].setAttribute("cy", f(ay));
   });
 
-  if (narrow) { svg.innerHTML = ""; svg.dataset.count = "0"; return; }
+  // links between related points: a bracket out to the side when both ends share a column,
+  // otherwise an S-curve across the gaps (passing behind the hub and cards)
+  const colOf = (side) => (side === "left" ? 0 : side === "right" ? 2 : 1);
+  links.forEach(([a, b], k) => {
+    const A = document.getElementById(a), B = document.getElementById(b);
+    const p = linkPaths[k], t = topPaths[k];
+    if (!A || !B || !p) return;
+    const end = (li) => {
+      const card = li.closest(".branch");
+      const lh = parseFloat(getComputedStyle(li).lineHeight) || 16;
+      const box = boxIn(li, canvas);
+      return { card: boxIn(card, canvas), col: colOf(card.dataset.side), y: box.t + Math.min(box.h, lh + 4) / 2 };
+    };
+    let P = end(A), Q = end(B);
+    let d, x1, x2;
+    if (P.col === Q.col) {
+      const dir = P.col === 0 ? -1 : 1;
+      x1 = dir < 0 ? P.card.l : P.card.r;
+      x2 = dir < 0 ? Q.card.l : Q.card.r;
+      const bulge = dir * Math.min(44, 16 + Math.abs(Q.y - P.y) * 0.14);
+      d = `M${f(x1)},${f(P.y)} C${f(x1 + bulge)},${f(P.y)} ${f(x2 + bulge)},${f(Q.y)} ${f(x2)},${f(Q.y)}`;
+    } else {
+      if (P.col > Q.col) [P, Q] = [Q, P];
+      x1 = P.card.r;
+      x2 = Q.card.l;
+      const mx = (x1 + x2) / 2;
+      d = `M${f(x1)},${f(P.y)} C${f(mx)},${f(P.y)} ${f(mx)},${f(Q.y)} ${f(x2)},${f(Q.y)}`;
+    }
+    p.setAttribute("d", d);
+    t.setAttribute("d", d);
+    [[x1, P.y], [x2, Q.y]].forEach(([x, y], j) => { const pin = linkPins[k * 2 + j]; pin.setAttribute("cx", f(x)); pin.setAttribute("cy", f(y)); });
+  });
+}
 
-  const cr = canvas.getBoundingClientRect();
-  const hr = hub.getBoundingClientRect();
-  svg.setAttribute("viewBox", `0 0 ${Math.max(1, cr.width)} ${Math.max(1, cr.height)}`);
-  const hx = hr.left - cr.left, hy = hr.top - cr.top + hr.height / 2, hw = hr.width;
-
-  if (svg.dataset.count !== String(nodes.length)) {
-    svg.innerHTML = nodes.map((el, i) => {
-      const mine = el.classList.contains("node--mine");
-      return `<path style="--i:${i}" class="${mine ? "leg--mine" : ""}" d="M0,0"/><circle r="3.5" style="--i:${i}" class="${mine ? "dot--mine" : ""}"/>`;
-    }).join("");
-    svg.dataset.count = String(nodes.length);
-  }
-  const paths = $$("path", svg), dots = $$("circle", svg);
-
-  nodes.forEach((el, i) => {
-    const r = el.getBoundingClientRect();
-    const left = el.dataset.side === "left";
-    const ax = (left ? r.right : r.left) - cr.left;
-    const ay = r.top - cr.top + r.height / 2;
-    const sx = left ? hx + 6 : hx + hw - 6;
-    const sy = hy + Math.max(-hr.height * 0.32, Math.min(hr.height * 0.32, (ay - hy) * 0.3));
-    const c1 = sx + (ax - sx) * 0.42, c2 = ax - (ax - sx) * 0.42;
-    const p = paths[i], dot = dots[i];
-    if (!p) return;
-    p.setAttribute("d", `M${sx.toFixed(1)},${sy.toFixed(1)} C${c1.toFixed(1)},${sy.toFixed(1)} ${c2.toFixed(1)},${ay.toFixed(1)} ${ax.toFixed(1)},${ay.toFixed(1)}`);
-    if (build || !p.style.getPropertyValue("--len")) p.style.setProperty("--len", p.getTotalLength().toFixed(1));
-    dot.setAttribute("cx", ax.toFixed(1));
-    dot.setAttribute("cy", ay.toFixed(1));
+/** Point at (or tab to) a linked point: light up its link line(s) and the point at the other end */
+function heatLinks(li, on) {
+  const section = li.closest(".spider");
+  if (!section) return;
+  const links = JSON.parse(section.dataset.links || "[]");
+  li.classList.toggle("is-hot", on);
+  (li.dataset.links || "").split(" ").filter(Boolean).forEach((k) => {
+    $$(`[data-link="${k}"]`, section).forEach((el) => el.classList.toggle("is-hot", on));
+    (links[k] || []).forEach((id) => document.getElementById(id)?.classList.toggle("is-hot", on));
   });
 }
 
@@ -756,6 +1034,7 @@ function layoutSpider(section, build) {
 function closeNoteForm() {
   const form = $(".note-form");
   if (!form) return;
+  if (form.closest("#note-modal")) { closeOverlays(); return; }
   const hidden = form.previousElementSibling;
   if (hidden && hidden.dataset.hiddenForEdit) { hidden.hidden = false; delete hidden.dataset.hiddenForEdit; }
   const area = form.closest("[data-mine-area]");
@@ -764,9 +1043,29 @@ function closeNoteForm() {
   if (state.dirty) { state.dirty = false; onNotesChanged(); }
 }
 
+/** "Which leg?" picker for a spider diagram: its branches, any legs you've named, your own card, or a new one */
+function branchPicker(target, current) {
+  const s = subjectForKey(target);
+  const names = [...new Set([
+    ...(s ? s.branches.map((b) => b.title) : []),
+    ...userNotes(target).map((n) => String(n.branch || "").trim()),
+    String(current || "").trim(),
+  ].filter(Boolean))];
+  const cur = norm(String(current || "").trim());
+  return `
+    <label class="field"><span>Which leg does it go on?</span>
+      <select name="branch">
+        ${names.map((n) => `<option value="${attr(n)}" ${norm(n) === cur ? "selected" : ""}>${esc(n)}</option>`).join("")}
+        <option value="" ${cur ? "" : "selected"}>My notes (a blue card of its own)</option>
+        <option value="__new">+ A new leg…</option>
+      </select></label>
+    <label class="field" data-new-branch hidden><span>Name the new leg</span><input name="newBranch" type="text" maxlength="40" placeholder="e.g. Relationship with Lennie"></label>`;
+}
+
 function openNoteForm(target, id = null) {
   closeNoteForm();
   const existing = id ? (state.notes[target] || {})[id] : null;
+  const onSpider = $(".spider")?.dataset.key === target;
   const form = document.createElement("form");
   form.className = "note-form";
   form.noValidate = true;
@@ -777,35 +1076,52 @@ function openNoteForm(target, id = null) {
     <div class="kind-picker" role="radiogroup" aria-label="Kind of note">
       ${Object.entries(KINDS).map(([k, label]) => `<label><input type="radio" name="kind" value="${k}" ${k === kind ? "checked" : ""}>${k === "quote" ? "“ ” " : k === "context" ? "★ " : "✎ "}${label}</label>`).join("")}
     </div>
+    ${onSpider ? branchPicker(target, existing?.branch) : ""}
     <p class="form__hint">Saved online to your notes database, so it shows up on every device.</p>
     <div class="form__actions">
       <button type="button" class="btn btn--ghost btn--small" data-cancel>Cancel</button>
-      <button type="submit" class="btn btn--mine btn--small">${existing ? "Save changes" : "Add note"}</button>
+      <button type="submit" class="btn btn--mine btn--small">${existing ? "Save changes" : onSpider ? "Add leg" : "Add note"}</button>
     </div>`;
 
-  if (existing) {
-    const el = document.getElementById(`u-${id}`);
-    if (el) { el.hidden = true; el.dataset.hiddenForEdit = "1"; el.after(form); }
-  }
-  if (!form.isConnected) {
-    const area = $(`[data-mine-area="${CSS.escape(target)}"]`);
-    if (!area) return;
-    $(".add-btn", area).hidden = true;
-    area.appendChild(form);
+  if (onSpider) {
+    // the diagram fills the screen, so the form opens on top of it
+    openOverlay("#note-modal");
+    $("#note-modal-title").textContent = existing ? "Edit your leg" : "Add a leg";
+    $("#note-modal [data-note-host]").appendChild(form);
+    const pick = form.elements.branch, named = $("[data-new-branch]", form);
+    pick.addEventListener("change", () => { named.hidden = pick.value !== "__new"; if (!named.hidden) form.elements.newBranch.focus(); });
+  } else {
+    if (existing) {
+      const el = document.getElementById(`u-${id}`);
+      if (el) { el.hidden = true; el.dataset.hiddenForEdit = "1"; el.after(form); }
+    }
+    if (!form.isConnected) {
+      const area = $(`[data-mine-area="${CSS.escape(target)}"]`);
+      if (!area) return;
+      $(".add-btn", area).hidden = true;
+      area.appendChild(form);
+    }
   }
 
   $("[data-cancel]", form).addEventListener("click", closeNoteForm);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const text = form.text.value.trim();
-    const k = form.kind.value;
-    if (!text) { form.text.focus(); return; }
+    const text = form.elements.text.value.trim();
+    const k = form.elements.kind.value;
+    if (!text) { form.elements.text.focus(); return; }
+    const patch = { text, kind: k };
+    if (onSpider) {
+      const pick = form.elements.branch.value;
+      const branch = pick === "__new" ? form.elements.newBranch.value.trim() : pick;
+      if (pick === "__new" && !branch) { form.elements.newBranch.focus(); return; }
+      patch.branch = branch;
+    }
     const btn = $('[type="submit"]', form);
     btn.disabled = true;
     try {
-      if (existing) await store.saveNote(target, id, { text, kind: k, updatedAt: Date.now() });
-      else await store.saveNote(target, store.newId(), { text, kind: k, createdAt: Date.now() });
-      toast(existing ? "Note updated" : "Note added");
+      if (existing) await store.saveNote(target, id, { ...patch, updatedAt: Date.now() });
+      else await store.saveNote(target, store.newId(), { ...patch, createdAt: Date.now() });
+      toast(existing ? "Note updated" : onSpider ? "Leg added" : "Note added");
       state.dirty = true;
       closeNoteForm();
     } catch (err) {
@@ -817,7 +1133,7 @@ function openNoteForm(target, id = null) {
   const ta = $("textarea", form);
   ta.focus();
   ta.setSelectionRange(ta.value.length, ta.value.length);
-  form.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
+  if (!onSpider) form.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
 }
 
 async function deleteNote(target, id) {
@@ -870,7 +1186,9 @@ function closeOverlays() {
   let any = false;
   $$(".overlay").forEach((o) => { if (!o.hidden) { o.hidden = true; any = true; } });
   document.body.style.overflow = "";
-  if (any && lastFocus && lastFocus.focus) lastFocus.focus();
+  const modalForm = $("#note-modal .note-form");
+  if (modalForm) { modalForm.remove(); if (state.dirty) { state.dirty = false; onNotesChanged(); } }
+  if (any && lastFocus && lastFocus.focus && lastFocus.isConnected) lastFocus.focus();
 }
 
 // -----------------------------------------------------------------
@@ -885,7 +1203,7 @@ function openSearch() {
 }
 
 function matchRanges(text, terms) {
-  const lc = text.toLowerCase();
+  const lc = norm(text);
   const ranges = [];
   terms.forEach((t) => { let from = 0; while (t) { const at = lc.indexOf(t, from); if (at < 0) break; ranges.push([at, at + t.length]); from = at + t.length; } });
   ranges.sort((a, b) => a[0] - b[0]);
@@ -912,14 +1230,14 @@ function snippet(text, terms, max = 180) {
 }
 
 function runSearch() {
-  const q = $("#search-input").value.trim().toLowerCase();
-  const terms = q.split(/\s+/).filter(Boolean);
+  const q = $("#search-input").value.trim();
+  const terms = norm(q).split(/\s+/).filter(Boolean);
   const box = $("#search-results");
   const count = $("#search-count");
   const f = state.filter;
 
   if (!terms.length && f === "all") {
-    box.innerHTML = `<div class="search__empty">Type to search every character node, incident, note, quote and paragraph — including the ones you've added.<br><small>Tip: switch to <b>Quotes only</b> or <b>Context only</b> to browse.</small></div>`;
+    box.innerHTML = `<div class="search__empty">Type to search every spider leg, incident, note, quote and paragraph — including the ones you've added, and famous quotes that aren't in the book.<br><small>Tip: switch to <b>Quotes only</b> or <b>Context only</b> to browse.</small></div>`;
     count.textContent = "";
     return;
   }
@@ -931,7 +1249,7 @@ function runSearch() {
   count.textContent = hits.length ? `${hits.length} result${hits.length === 1 ? "" : "s"}` : "No results";
   if (!hits.length) { box.innerHTML = `<div class="search__empty">Nothing matches “${esc(q)}”${f !== "all" ? " with that filter" : ""}.</div>`; return; }
 
-  const order = ["Exam essentials", "Characters", "Settings", "My diagrams", "Incidents", "Notes & Quotes", "Paragraphs"];
+  const order = ["Exam essentials", "Characters", "Settings", "My diagrams", "Incidents", "Notes & Quotes", "Paragraphs", "Famous quotes"];
   const groups = new Map();
   hits.forEach((it) => { if (!groups.has(it.section)) groups.set(it.section, []); groups.get(it.section).push(it); });
 
@@ -939,8 +1257,9 @@ function runSearch() {
     <div class="search__group">${esc(s)} <span style="opacity:.6">· ${groups.get(s).length}</span></div>
     ${groups.get(s).map((it) => `
       <button type="button" class="result ${it.mine ? "is-mine" : ""}" data-route="${attr(it.route)}" data-id="${attr(it.id)}" style="--c:${it.colour || MINE}">
-        <span class="result__where">${it.mine ? '<span class="tag tag--mine">Mine</span> ' : ""}<b>${esc(it.group)}</b>${it.isContext ? ' · <span class="star">★</span> context' : ""}${it.isQuote ? " · quotation" : ""}</span>
+        <span class="result__where">${it.mine ? '<span class="tag tag--mine">Mine</span> ' : ""}${it.added ? `${ADDED_TAG} ` : ""}<b>${esc(it.group)}</b>${it.famous ? ` · ${esc(it.sub)}` : ""}${it.isContext ? ' · <span class="star">★</span> context' : ""}${it.isQuote && !it.famous ? " · quotation" : ""}</span>
         ${highlightMatches(snippet(it.text, terms), terms)}
+        ${it.shows ? `<span class="result__shows">${highlightMatches(it.shows, terms)}</span>` : ""}
       </button>`).join("")}`).join("");
 }
 
@@ -1015,7 +1334,7 @@ function answerQuiz(choice) {
   $("#quiz-score").textContent = `${state.quiz.score} / ${state.quiz.asked}`;
   $("#quiz-reveal").innerHTML = `
     <div class="quiz__reveal" style="--c:${item.colour || MINE}">
-      <span class="eyebrow">${choice === null ? "Answer" : right ? "Correct" : "Not quite"} — ${esc(item.group)}</span>
+      <span class="eyebrow">${choice === null ? "Answer" : right ? "Correct" : "Not quite"} — ${esc(item.group)}</span>${item.added ? ` ${ADDED_TAG}` : ""}
       <p><strong>What it shows:</strong> ${fmt(item.text, { kind: item.kind })}</p>
     </div>`;
   $(".quiz__actions").innerHTML = `
@@ -1097,7 +1416,17 @@ function wireChrome() {
     if (e.key === "Escape") { if ($$(".overlay").some((o) => !o.hidden)) { closeOverlays(); } else if ($(".note-form")) { closeNoteForm(); } }
   });
 
-  NARROW.addEventListener?.("change", () => $$(".spider").forEach((s) => layoutSpider(s, false)));
+  // spider diagrams: trace links from a point, keep the diagram fitted to the window
+  const view = $("#view");
+  const linked = (e) => e.target.closest?.(".pt--linked");
+  view.addEventListener("mouseover", (e) => { const li = linked(e); if (li && !li.contains(e.relatedTarget)) heatLinks(li, true); });
+  view.addEventListener("mouseout", (e) => { const li = linked(e); if (li && !li.contains(e.relatedTarget)) heatLinks(li, false); });
+  view.addEventListener("focusin", (e) => { const li = linked(e); if (li) heatLinks(li, true); });
+  view.addEventListener("focusout", (e) => { const li = linked(e); if (li) heatLinks(li, false); });
+  window.addEventListener("resize", relayoutSpiders);
+  document.fonts?.ready.then(relayoutSpiders);
+
+  NARROW.addEventListener?.("change", relayoutSpiders);
   REDUCED_MOTION.addEventListener?.("change", () => render({ animate: false }));
   window.addEventListener("hashchange", navigate);
 }
