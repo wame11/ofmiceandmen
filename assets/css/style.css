@@ -593,6 +593,31 @@ mark.hl {
 .feedback__mark { font-family: var(--font-slab); font-size: 1.5rem; color: var(--red); float: right; margin-left: 12px; line-height: 1; }
 .feedback p { margin: 4px 0 0; }
 
+/* ---------- marks from the book: boxed points, hard-to-read handwriting, the teacher's mark ---------- */
+.pt--boxed .pt__text, .is-boxed .li__text, .boxed-sample {
+  padding: .04em .35em; margin: 0 .05em;
+  border: 1.6px solid var(--ink-2);
+  border-radius: 6px 9px 7px 10px / 9px 6px 10px 7px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.pt--mine.pt--boxed .pt__text { border-color: var(--mine); }
+.unclear {
+  display: inline-grid; place-items: center;
+  width: 1.3em; height: 1.3em; margin-left: .1em;
+  border-radius: 50%; border: 1.4px solid var(--red);
+  color: var(--red); font-size: .7em; font-weight: 700; line-height: 1;
+  text-decoration: none; cursor: help; vertical-align: .2em;
+}
+.unclear-note { display: block; margin-top: 3px; font-size: .78em; color: var(--red-2); font-style: italic; }
+.unclear-note .unclear { font-size: .9em; margin: 0 2px 0 0; }
+.k-box { display: inline-block; width: 13px; height: 9px; border: 1.4px solid var(--ink-2); border-radius: 2px 3px 2px 3px; }
+.spider__fb { margin-top: .5em; font-size: calc(var(--fs, 15px) * .8); color: var(--red-2); font-style: italic; }
+.spider__fb b { font-family: var(--font-slab); font-style: normal; font-weight: 400; color: var(--red); font-size: 1.3em; margin-right: .4em; vertical-align: -.05em; }
+.marginalia { margin: 12px 0 0; font-size: .9rem; color: var(--ink-2); }
+.marginalia .eyebrow { margin-right: 8px; }
+.feedback__notes { margin: 6px 0 0; padding-left: 18px; list-style: disc; font-size: .9rem; }
+.feedback__notes li { margin: 2px 0; }
+
 /* ---------- my notes: add / edit ---------- */
 .mine-area { margin-top: 14px; }
 .mine-list { display: grid; gap: 8px; }

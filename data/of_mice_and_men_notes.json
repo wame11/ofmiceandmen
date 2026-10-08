@@ -4,7 +4,9 @@
   "conventions": {
     "quotes": "Text in double quotes is a quotation from the novel",
     "context": "Items starting with ★ are context / teacher points (AO4)",
-    "bookRef": "[p.X] = page X of Ethan's exercise book"
+    "bookRef": "[p.X] = page X of Ethan's exercise book",
+    "boxed": "Boxed points are ones Ethan boxed or circled in the book",
+    "unclear": "A ? marks handwriting that was hard to read — check it against the book"
   },
   "assessmentObjectives": [
     {
@@ -138,7 +140,13 @@
           "Tells Slim he once told Lennie"
         ]
       ],
-      "bookPage": "12"
+      "bookPage": "12",
+      "unclear": [
+        [
+          "Metaphorical journey",
+          "\"Metaphorical\" is hard to read — check against the book"
+        ]
+      ]
     },
     {
       "id": "lennie",
@@ -233,7 +241,11 @@
           "★ People with learning disabilities"
         ]
       ],
-      "bookPage": "11"
+      "bookPage": "11",
+      "boxed": [
+        "Does not understand the consequences of his actions",
+        "\"He's jes' like a kid\""
+      ]
     },
     {
       "id": "candy",
@@ -312,7 +324,10 @@
           "★ He got $250"
         ]
       ],
-      "bookPage": "16"
+      "bookPage": "16",
+      "boxed": [
+        "Dog is foreshadowing of Candy"
+      ]
     },
     {
       "id": "crooks",
@@ -399,6 +414,10 @@
         [
           "Lives alone in the harness room",
           "More permanent than the other men"
+        ],
+        [
+          "Kicked by a horse",
+          "Dehumanised"
         ]
       ],
       "bookPage": "17"
@@ -493,7 +512,11 @@
           "flopping like a fish"
         ]
       ],
-      "bookPage": "17"
+      "bookPage": "17",
+      "feedback": {
+        "mark": "7/10",
+        "comment": "NOTES: Could be neater!"
+      }
     },
     {
       "id": "wife",
@@ -588,7 +611,13 @@
           "Threatens Crooks"
         ]
       ],
-      "bookPage": "22"
+      "bookPage": "22",
+      "boxed": [
+        "Gives \"the eye\"",
+        "Possessive / disharmony",
+        "Femme fatale",
+        "Seeks conversation with the ranch workers"
+      ]
     },
     {
       "id": "slim",
@@ -1303,6 +1332,12 @@
       "what": "The bus drops George and Lennie off miles short of the ranch, so they have to walk the rest.",
       "notes": [
         "Bus driver incident — \"crazy bastard\" — shows George's short temper [p.8]"
+      ],
+      "unclear": [
+        [
+          "crazy bastard",
+          "A word squeezed in before \"crazy bastard\" might say \"Lennie\" — check against the book"
+        ]
       ]
     },
     {
@@ -1378,6 +1413,15 @@
         "★ Depression-era America",
         "They are looking for some stability in a world characterised by instability",
         "Chapter 1 incidents: ketchup incident shows bad memory and George's short temper · bus driver incident — \"crazy bastard\" — shows George's short temper · mouse incident (see p.13)"
+      ],
+      "boxed": [
+        "Chapter 1 incidents"
+      ],
+      "unclear": [
+        [
+          "crazy bastard",
+          "A word squeezed in before \"crazy bastard\" might say \"Lennie\" — check against the book"
+        ]
       ]
     },
     {
@@ -1406,6 +1450,9 @@
         "When Lennie sips water (Chapter 1) it's animal-like",
         "★ The American Dream gives them hope / sustains them",
         "Lennie crushes Curley's hand once George tells him to defend himself. This incident is used by Steinbeck to foreshadow the danger Lennie poses when panicked or provoked"
+      ],
+      "boxed": [
+        "The American Dream gives them hope"
       ]
     }
   ],
@@ -1419,8 +1466,15 @@
       "feedback": {
         "mark": "7/10",
         "comment": "Some good ideas Ethan, with well-embedded quotes.",
-        "target": "Try to eliminate the careless errors, e.g. \"Upon\", \"interesting\", \"aggressive\". Try to come up with mnemonics to help."
-      }
+        "target": "Try to eliminate the careless errors, e.g. \"Upon\", \"interesting\", \"aggressive\". Try to come up with mnemonics to help.",
+        "notes": [
+          "Spelling at the top: \"sp agg·re·ssive\" (Ethan wrote \"agressive\")",
+          "Margin corrections: \"an\" (aggressive), \"Upon\" (Ethan wrote \"Apon\"), \"desire\""
+        ]
+      },
+      "marginalia": [
+        "Ethan practised the spellings underneath: upon, upon, upon · interesting, interesting, interesting"
+      ]
     },
     {
       "id": "wife",
@@ -1429,8 +1483,15 @@
       "task": "Task 3",
       "text": "Steinbeck introduces Curley's wife as an isolated person. When she is first in the bunkhouse, she stands in the \"doorway\", which portrays her as a threat to the men as she is standing over them. She is wearing \"red,\" which is a clear contrast to the brown \"whitewashed\" bunkhouse. This shows her clear difference to the men and emphasises that people with authority (Curley, his wife and the boss) wear clothes to show their power. It is also interesting to note that Curley's wife is only referred to as \"Curley's wife\"; her name is not known. This and also the apostrophe on \"Curley's\" conveys the fact (due to the context of 1930s America) that Curley is the possessor of his wife and how she can be viewed as an object who can be owned.",
       "feedback": {
-        "target": "When a word starts with a vowel, remember to use \"an\" — e.g. an isolated person, an apple, a chicken."
-      }
+        "target": "When a word starts with a vowel, remember to use \"an\" — e.g. an isolated person, an apple, a chicken.",
+        "notes": [
+          "Margin corrections: \"an isolated\" (Ethan wrote \"a isolated\") and \"interesting\" (spelling)",
+          "Tick at the end of the paragraph"
+        ]
+      },
+      "marginalia": [
+        "Very sorry about the myriad of mess Sir, please see Task 3 below and Task 2 on the next page"
+      ]
     },
     {
       "id": "boss",
@@ -1444,7 +1505,14 @@
       "title": "Embedding: George's \"Own Crops\"",
       "page": "25",
       "task": "Embedding practice",
-      "text": "We hear George, when confessing to Slim, suggest that \"if I was bright\" he would have his \"own crops\" instead of working for someone in a higher echelon. George implies that people at the bottom do the work but don't get the fruits of their labour. This highlights the injustice of a system which is exploitative."
+      "text": "We hear George, when confessing to Slim, suggest that \"if I was bright\" he would have his \"own crops\" instead of working for someone in a higher echelon. George implies that people at the bottom do the work but don't get the fruits of their labour. This highlights the injustice of a system which is exploitative.",
+      "feedback": {
+        "mark": "5",
+        "comment": "Marked under the paragraph — a \"5\" and a tick"
+      }
     }
+  ],
+  "missingPages": [
+    "19 — not in the photos"
   ]
 }

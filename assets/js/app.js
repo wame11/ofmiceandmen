@@ -6,7 +6,7 @@
 
 import { firebaseConfig, DB_ROOT } from "./firebase-config.js";
 
-const DATA_URL = "data/of_mice_and_men_notes.json?v=2026-10-07";
+const DATA_URL = "data/of_mice_and_men_notes.json?v=2026-10-08";
 const CACHE_KEY = "omam-notes-cache-v1";
 const FIREBASE_VERSION = "10.7.0";
 
@@ -210,11 +210,20 @@ function branchesOf(x) {
   return x.nodes && x.nodes.length ? [{ title: "", nodes: x.nodes, extra: [] }] : [];
 }
 
+/** "boxed" and "unclear" in the JSON name a point by a snippet of its text (as "links" do):
+    boxed = Ethan boxed or circled it in the book; unclear = [snippet, note] for handwriting that was hard to read */
+function marksFor(text, x) {
+  const t = String(text);
+  const boxed = (x.boxed || []).some((snip) => t.includes(snip));
+  const u = (x.unclear || []).find(([snip]) => t.includes(snip));
+  return { boxed, unclear: u ? u[1] : null };
+}
+
 /** Every leg from the JSON, flattened: notebook ones (n-…) then added ones (x-…), branch by branch */
-function legsOf(key, branches) {
+function legsOf(key, branches, x = {}) {
   const legs = [];
   branches.forEach((b, bi) => {
-    b.nodes.forEach((t, i) => legs.push({ id: `n-${key}-${bi}-${i}`, text: t, added: false, branch: bi }));
+    b.nodes.forEach((t, i) => legs.push({ id: `n-${key}-${bi}-${i}`, text: t, added: false, branch: bi, ...marksFor(t, x) }));
     b.extra.forEach((t, i) => legs.push({ id: `x-${key}-${bi}-${i}`, text: t, added: true, branch: bi }));
   });
   return legs;
@@ -224,7 +233,7 @@ function subjectFor(kind, id) {
   const d = state.data;
   const fromData = (x, key, route) => {
     const branches = branchesOf(x);
-    return { kind, id: x.id, key, name: x.name, tagline: x.tagline, bookPage: x.bookPage, branches, legs: legsOf(key, branches), links: x.links || [], colour: COLOURS[x.id] || MINE, mine: false, route };
+    return { kind, id: x.id, key, name: x.name, tagline: x.tagline, bookPage: x.bookPage, branches, legs: legsOf(key, branches, x), links: x.links || [], feedback: x.feedback || null, colour: COLOURS[x.id] || MINE, mine: false, route };
   };
   if (kind === "characters") {
     const c = d.characters.find((x) => x.id === id);
@@ -236,7 +245,7 @@ function subjectFor(kind, id) {
   }
   if (kind === "diagram") {
     const g = state.diagrams[id];
-    return g && { kind, id, key: `diagram_${id}`, name: g.name, tagline: g.tagline || "", bookPage: g.bookPage || "", branches: [], legs: [], links: [], colour: safeColour(g.colour), mine: true, route: `#/diagram/${id}` };
+    return g && { kind, id, key: `diagram_${id}`, name: g.name, tagline: g.tagline || "", bookPage: g.bookPage || "", branches: [], legs: [], links: [], feedback: null, colour: safeColour(g.colour), mine: true, route: `#/diagram/${id}` };
   }
   return null;
 }
@@ -266,7 +275,8 @@ function buildIndex() {
 
   [["characters", "Characters"], ["settings", "Settings"]].forEach(([kind, section]) => d[kind].forEach((x) => {
     const s = subjectFor(kind, x.id);
-    s.legs.forEach((leg) => add({ id: leg.id, route: s.route, section, group: s.name, text: leg.text, added: leg.added, hidden: s.branches[leg.branch].title, colour: s.colour }));
+    s.legs.forEach((leg) => add({ id: leg.id, route: s.route, section, group: s.name, text: leg.text, added: leg.added, hidden: `${s.branches[leg.branch].title} ${leg.unclear || ""}`, colour: s.colour }));
+    if (s.feedback) add({ id: `fb-${s.key}`, route: s.route, section, group: `${s.name} — teacher's mark`, text: [s.feedback.mark, s.feedback.comment].filter(Boolean).join(" — "), colour: s.colour });
     addMine(s.key, s.route, section, s.name, s.colour);
   }));
 
@@ -291,7 +301,7 @@ function buildIndex() {
     const route = `#/paragraphs/${p.id}`;
     add({ id: `para-${p.id}-text`, route, section: "Paragraphs", group: p.title, text: p.text, colour: COLOURS.george });
     if (p.feedback) {
-      const fb = [p.feedback.mark, p.feedback.comment, p.feedback.target].filter(Boolean).join(" — ");
+      const fb = [p.feedback.mark, p.feedback.comment, p.feedback.target, ...(p.feedback.notes || []), ...(p.marginalia || [])].filter(Boolean).join(" — ");
       add({ id: `para-${p.id}-fb`, route, section: "Paragraphs", group: `${p.title} — feedback`, text: fb, colour: COLOURS.george });
     }
     addMine(`para_${p.id}`, route, "Paragraphs", p.title, COLOURS.george);
@@ -464,7 +474,10 @@ function renderHome() {
         <li><span class="pref" style="margin:0">Book p.X</span> ${esc(d.conventions.bookRef.replace("[p.X] =", "=").trim())}</li>
         <li><span class="swatch"></span> notes in blue are ones you've added yourself</li>
         <li>${ADDED_TAG} = added to help revision, not from the exercise book</li>
+        ${d.conventions.boxed ? `<li><span class="boxed-sample">boxed</span> ${esc(d.conventions.boxed.replace(/^Boxed points are/, "=").trim())}</li>` : ""}
+        ${d.conventions.unclear ? `<li><abbr class="unclear">?</abbr> ${esc(d.conventions.unclear.replace(/^A \? marks/, "=").trim())}</li>` : ""}
       </ul>
+      ${(d.missingPages || []).length ? `<p class="form__hint" style="margin-top:10px">Not in the notes yet: page${d.missingPages.length === 1 ? "" : "s"} ${esc(d.missingPages.join(", "))}.</p>` : ""}
       <p class="form__hint" style="margin-top:12px">${quoteCount} quotations across the notebook${famousCount ? ` · ${famousCount} more famous quotes in search` : ""}${mineCount ? ` · ${mineCount} note${mineCount === 1 ? "" : "s"} of your own` : ""}.</p>
     </section>`;
 }
@@ -552,6 +565,20 @@ function noteTools(target, id) {
     <button type="button" class="icon-btn icon-btn--danger" data-action="delete-note" data-target="${attr(target)}" data-id="${attr(id)}" aria-label="Delete this note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h10l-.8 11H5.8zM8 3h4l.5 2h-5zM3 5h14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg></button>`;
 }
 
+/** Classes for a point on a spider diagram (shared by the diagram and the zoom view) */
+function ptClass(it) {
+  return ["pt", it.kind === "context" || isContext(it.text) ? "pt--ctx" : "", it.added ? "pt--added" : "", it.mine ? "pt--mine" : "", it.boxed ? "pt--boxed" : "", it.unclear ? "pt--unclear" : ""].filter(Boolean).join(" ");
+}
+
+/** A small ? after handwriting that was hard to read, with the note on hover */
+const unclearMark = (it) => (it.unclear ? ` <abbr class="unclear" title="${attr(it.unclear)}">?</abbr>` : "");
+
+/** A notebook line in a list (notes pages, incidents): ★ context, boxed and ? marks as in the book */
+function listItem(id, text, marks = {}) {
+  const cls = [isContext(text) ? "is-ctx" : "", marks.boxed ? "is-boxed" : "", marks.unclear ? "is-unclear" : ""].filter(Boolean).join(" ");
+  return `<li id="${attr(id)}" class="${cls}"><span class="li__text">${fmt(text)}</span>${unclearMark(marks)}</li>`;
+}
+
 function mineControls(target, id, kind) {
   return `<span class="tag tag--mine">Mine</span><span>${esc(KINDS[kind] || "Point")}</span><span class="spacer"></span>${noteTools(target, id)}`;
 }
@@ -625,8 +652,8 @@ function renderSpiderPage(s) {
 
   const pt = (it) => {
     const ln = linksOf.get(it.id);
-    const cls = ["pt", it.kind === "context" || isContext(it.text) ? "pt--ctx" : "", it.added ? "pt--added" : "", it.mine ? "pt--mine" : "", ln ? "pt--linked" : ""].filter(Boolean).join(" ");
-    return `<li class="${cls}" id="${attr(it.id)}"${ln ? ` data-links="${ln.join(" ")}" tabindex="0"` : ""}${it.added ? ' title="Not in my notes — added to help revision"' : ""}><span class="pt__text">${fmt(it.text, { kind: it.kind })}</span>${it.mine ? `<span class="pt__tools">${noteTools(s.key, it.noteId)}</span>` : ""}</li>`;
+    const cls = [ptClass(it), ln ? "pt--linked" : ""].filter(Boolean).join(" ");
+    return `<li class="${cls}" id="${attr(it.id)}"${ln ? ` data-links="${ln.join(" ")}" tabindex="0"` : ""}${it.added ? ' title="Not in my notes — added to help revision"' : ""}><span class="pt__text">${fmt(it.text, { kind: it.kind })}</span>${unclearMark(it)}${it.mine ? `<span class="pt__tools">${noteTools(s.key, it.noteId)}</span>` : ""}</li>`;
   };
   let ci = 0;
   const card = (c, side) => (c ? `
@@ -662,6 +689,7 @@ function renderSpiderPage(s) {
             <h1 class="spider__name">${esc(s.name)}</h1>
             ${s.tagline ? `<p>${esc(s.tagline)}</p>` : ""}
             <div class="spider__meta">${s.bookPage ? bookRef(s.bookPage) : (s.mine ? '<span class="tag tag--mine">My diagram</span>' : "")}<span>${total} leg${total === 1 ? "" : "s"}</span></div>
+            ${s.feedback ? `<div class="spider__fb" id="fb-${attr(s.key)}" title="Teacher's mark, written in the margin of this page"><b>${esc(s.feedback.mark || "")}</b>${s.feedback.comment ? esc(s.feedback.comment) : ""}</div>` : ""}
           </div>
           <div class="spider__slot">${bottom}</div>
         </div>
@@ -674,6 +702,8 @@ function renderSpiderPage(s) {
         ${items.some((it) => it.added) ? "<span><i class=\"k-ring\"></i>added — not in my notes</span>" : ""}
         ${items.some((it) => it.mine) ? "<span><i class=\"k-mine\"></i>added by me</span>" : ""}
         ${items.some((it) => it.kind === "context" || isContext(it.text)) ? '<span><span class="star">★</span>context</span>' : ""}
+        ${items.some((it) => it.boxed) ? '<span><i class="k-box"></i>boxed in the book</span>' : ""}
+        ${items.some((it) => it.unclear) ? '<span><abbr class="unclear">?</abbr>hard to read — check the book</span>' : ""}
         ${links.length ? "<span><i class=\"k-link\"></i>linked points — point at one to trace its link</span>" : ""}
         ${cards.length ? `<span class="k-zoom"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l5 5M8.5 6v5M6 8.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>click a section to zoom in</span>` : ""}
       </div>
@@ -697,7 +727,7 @@ function renderIncidents() {
           <h2>${esc(inc.title)}</h2>
           <p class="incident__what" id="inc-${attr(inc.id)}-what">${fmt(inc.what)}</p>
           <ul class="notes-list">
-            ${(inc.notes || []).map((t, i) => `<li id="inc-${attr(inc.id)}-n${i}" class="${isContext(t) ? "is-ctx" : ""}">${fmt(t)}</li>`).join("")}
+            ${(inc.notes || []).map((t, i) => listItem(`inc-${inc.id}-n${i}`, t, marksFor(t, inc))).join("")}
             ${mine.map((n) => `<li id="u-${attr(n.id)}" class="is-mine">${fmt(n.text, { kind: n.kind })}<div class="mine-row">${mineControls(`incident_${inc.id}`, n.id, n.kind)}</div></li>`).join("")}
           </ul>
           ${inc.para ? `
@@ -736,7 +766,7 @@ function renderNotes() {
     </div>
     <div class="timeline">
       ${d.notesAndQuotes.map((pg) => pageCard(`nq-${pg.page}`, esc(pg.title), bookRef(pg.page),
-        pg.items.map((t, i) => `<li id="nq-${attr(pg.page)}-${i}" class="${isContext(t) ? "is-ctx" : ""}">${fmt(t)}</li>`).join(""),
+        pg.items.map((t, i) => listItem(`nq-${pg.page}-${i}`, t, marksFor(t, pg))).join(""),
         `notes_${pg.page}`)).join("")}
       ${pageCard("nq-mine", "My own notes", '<span class="tag tag--mine">Mine</span>', "", "notes_mine")}
       ${famous.size ? `
@@ -778,7 +808,9 @@ function renderParagraphs() {
               <span class="eyebrow">Teacher feedback</span>
               ${fb.comment ? `<p>${fmt(fb.comment)}</p>` : ""}
               ${fb.target ? `<p><strong>Target:</strong> ${fmt(fb.target)}</p>` : ""}
+              ${(fb.notes || []).length ? `<ul class="feedback__notes">${fb.notes.map((n) => `<li>${fmt(n)}</li>`).join("")}</ul>` : ""}
             </div>` : ""}
+          ${(p.marginalia || []).length ? `<p class="marginalia" id="para-${attr(p.id)}-margin"><span class="eyebrow">Also on the page</span>${p.marginalia.map((m) => `<i>${fmt(m)}</i>`).join(" · ")}</p>` : ""}
           ${mine.length ? `<ul class="notes-list" style="margin-top:12px">${mine.map((n) => `<li id="u-${attr(n.id)}" class="is-mine">${fmt(n.text, { kind: n.kind })}<div class="mine-row">${mineControls(`para_${p.id}`, n.id, n.kind)}</div></li>`).join("")}</ul>` : ""}
           ${addButton(`para_${p.id}`)}
         </article>`;
@@ -1051,9 +1083,8 @@ function openZoom(key, order, focusId = null, fromEl = null) {
   body.innerHTML = `
     <ul class="branch__pts zoom__pts">
       ${c.items.map((it) => {
-        const cls = ["pt", it.kind === "context" || isContext(it.text) ? "pt--ctx" : "", it.added ? "pt--added" : "", it.mine ? "pt--mine" : ""].filter(Boolean).join(" ");
-        return `<li class="${cls}" data-zid="${attr(it.id)}">
-          <span class="pt__text">${fmt(it.text, { kind: it.kind })}</span>${it.added ? ` ${ADDED_TAG}` : ""}${it.mine ? ' <span class="tag tag--mine">Mine</span>' : ""}
+        return `<li class="${ptClass(it)}" data-zid="${attr(it.id)}">
+          <span class="pt__text">${fmt(it.text, { kind: it.kind })}</span>${it.added ? ` ${ADDED_TAG}` : ""}${it.mine ? ' <span class="tag tag--mine">Mine</span>' : ""}${it.unclear ? `<span class="unclear-note"><abbr class="unclear">?</abbr> ${esc(it.unclear)}</span>` : ""}
           ${partners(it.id).map((p) => `
             <button type="button" class="zoom__link" data-zoom-go="${p.ci}" data-zoom-focus="${attr(p.it.id)}">
               <span class="zoom__link-label">Linked to · ${esc(p.title)} →</span>
